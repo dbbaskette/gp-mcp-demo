@@ -2,3 +2,6 @@
 
 # TLS certs generated locally via mkcert
 certs/*.pem
+
+# superpowers brainstorming scratch
+.superpowers/
