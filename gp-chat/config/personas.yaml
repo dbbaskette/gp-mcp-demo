@@ -1,0 +1,4 @@
+# See gp-chat/src/main/java/com/baskettecase/gpchat/config/PersonaConfig.java for schema.
+authProviders: []
+mcpServers: []
+personas: []
