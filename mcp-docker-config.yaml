@@ -1,0 +1,52 @@
+mcp:
+  home: /app
+  host: 0.0.0.0
+  port: 8080
+  endpoint: /mcp
+  log-path: /app/server.log
+  log-level: debug
+  max-connections: 10
+
+service:
+  gpdb:
+    host: greenplum-sne
+    port: 5432
+    database: tpcds
+    username: "gpadmin"
+    password: "VMware1!"
+
+auth:
+  enabled: true
+  type: "oauth2"
+  oauth2:
+    # Browser-facing (must match token iss claim)
+    authorization_server_url: "https://localhost"
+    # What the MCP resource advertises
+    resource_url: "https://localhost/mcp"
+    scopes_supported:
+      - "openid"
+      - "email"
+      - "profile"
+    # Container-to-container (MCP fetches keys from feauxauth on the compose network)
+    jwks_url: "http://feauxauth:8080/.well-known/jwks.json"
+    audience: "mcp-server"
+
+    permission_levels:
+      - name: "readonly"
+        roles:
+          - "readonly"
+        database_username: "gpadmin"
+        database_password: "VMware1!"
+      - name: "analyst"
+        roles:
+          - "analyst"
+        database_username: "gpadmin"
+        database_password: "VMware1!"
+      - name: "admin"
+        roles:
+          - "admin"
+        database_username: "gpadmin"
+        database_password: "VMware1!"
+
+    default_database_username: "gpadmin"
+    default_database_password: "VMware1!"

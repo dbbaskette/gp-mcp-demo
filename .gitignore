@@ -1,0 +1,4 @@
+.DS_Store
+
+# TLS certs generated locally via mkcert
+certs/*.pem

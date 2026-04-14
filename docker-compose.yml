@@ -1,0 +1,96 @@
+services:
+  feauxauth-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: feauxauth
+      POSTGRES_USER: feauxauth
+      POSTGRES_PASSWORD: feauxauth
+    volumes:
+      - feauxauth_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U feauxauth"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  feauxauth:
+    build: ../FeauxAuth
+    environment:
+      DATABASE_URL: jdbc:postgresql://feauxauth-db:5432/feauxauth
+      DATABASE_USERNAME: feauxauth
+      DATABASE_PASSWORD: feauxauth
+      FEAUXAUTH_ISSUER: https://localhost
+      FEAUXAUTH_EXTRA_AUDIENCES: mcp-server
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: feauxauth
+    depends_on:
+      feauxauth-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  greenplum:
+    image: greenplum-sne-full:latest
+    hostname: greenplum-sne
+    ports:
+      - "15432:5432"
+    volumes:
+      - gpdata:/home/gpadmin/data
+    healthcheck:
+      test: ["CMD-SHELL", "/usr/local/greenplum-db/bin/psql -U gpadmin -d postgres -tAc 'SELECT 1' >/dev/null 2>&1 || su - gpadmin -c 'psql -d postgres -tAc \"SELECT 1\"' >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 40
+      start_period: 120s
+
+  tpcds-loader:
+    image: postgres:16
+    depends_on:
+      greenplum:
+        condition: service_healthy
+    volumes:
+      - ../greenplum-sne/tpcds:/tpcds:ro
+      - ./docker/tpcds-load.sh:/tpcds-load.sh:ro
+    environment:
+      GPHOST: greenplum-sne
+      GPPORT: "5432"
+      GPUSER: gpadmin
+      PGPASSWORD: "VMware1!"
+      DATABASE: tpcds
+      TPCDS_DIR: /tpcds
+    entrypoint: ["/bin/bash", "/tpcds-load.sh"]
+    restart: "no"
+
+  mcp:
+    image: debian:stable-slim
+    depends_on:
+      feauxauth:
+        condition: service_started
+      tpcds-loader:
+        condition: service_completed_successfully
+    volumes:
+      - ../Tanzu-GP-MCP-Server/gp-mcp-server-linux-arm64:/app/gp-mcp-server:ro
+      - ./mcp-docker-config.yaml:/app/config.yaml:ro
+    working_dir: /app
+    command: ["/app/gp-mcp-server", "streamable-http", "--config-file=/app/config.yaml"]
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      - feauxauth
+      - mcp
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  feauxauth_pgdata:
+  gpdata:
+  caddy_data:
+  caddy_config:

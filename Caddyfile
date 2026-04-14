@@ -1,0 +1,20 @@
+{
+    admin off
+}
+
+localhost {
+    tls /certs/localhost+1.pem /certs/localhost+1-key.pem
+
+    # MCP server endpoints (path preserved — MCP listens at /mcp)
+    @mcp path /mcp /mcp/* /.well-known/oauth-protected-resource
+    handle @mcp {
+        reverse_proxy mcp:8080 {
+            header_down WWW-Authenticate "http://localhost" "https://localhost"
+        }
+    }
+
+    # Everything else → FeauxAuth (admin UI, /oauth/*, OIDC discovery, JWKS)
+    handle {
+        reverse_proxy feauxauth:8080
+    }
+}
