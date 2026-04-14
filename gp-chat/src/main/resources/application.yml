@@ -1,6 +1,8 @@
 spring:
   application:
     name: gp-chat
+  config:
+    import: optional:file:/app/config/personas.yaml
 
 server:
   port: 8080

@@ -1,4 +1,27 @@
-# See gp-chat/src/main/java/com/baskettecase/gpchat/config/PersonaConfig.java for schema.
-authProviders: []
-mcpServers: []
-personas: []
+authProviders:
+  - id: feauxauth
+    issuerUri: https://localhost
+    clientRegistrationMode: dynamic
+    scopes: [openid, profile, email]
+
+mcpServers:
+  - id: gp-mcp
+    url: https://localhost/mcp
+    label: "Greenplum MCP"
+
+personas:
+  - id: viewer
+    label: "Read-only Viewer"
+    description: "SELECT on a narrow slice"
+    authProvider: feauxauth
+    mcpServer: gp-mcp
+  - id: analyst
+    label: "Analyst"
+    description: "Read all tpcds tables"
+    authProvider: feauxauth
+    mcpServer: gp-mcp
+  - id: dba
+    label: "DBA"
+    description: "Full privileges"
+    authProvider: feauxauth
+    mcpServer: gp-mcp
