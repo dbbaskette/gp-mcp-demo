@@ -43,6 +43,7 @@
         <dependency><groupId>org.springframework.ai</groupId><artifactId>spring-ai-starter-model-openai</artifactId></dependency>
         <dependency><groupId>org.springframework.ai</groupId><artifactId>spring-ai-starter-model-anthropic</artifactId></dependency>
         <dependency><groupId>org.springframework.ai</groupId><artifactId>spring-ai-starter-model-vertex-ai-gemini</artifactId></dependency>
+        <dependency><groupId>org.springframework.ai</groupId><artifactId>spring-ai-starter-mcp-client</artifactId></dependency>
         <!-- spring-boot-configuration-processor omitted: it NPEs on prefix="" with nested records (Spring Boot 3.4.x bug) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
