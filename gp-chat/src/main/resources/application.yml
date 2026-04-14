@@ -3,6 +3,16 @@ spring:
     name: gp-chat
   config:
     import: optional:file:/app/config/personas.yaml
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+    vertex:
+      ai:
+        gemini:
+          project-id: ${GEMINI_PROJECT_ID:}
+          location: ${GEMINI_LOCATION:us-central1}
 
 server:
   port: 8080
