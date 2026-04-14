@@ -5,3 +5,9 @@ certs/*.pem
 
 # superpowers brainstorming scratch
 .superpowers/
+
+# gp-chat build / secrets
+gp-chat/.env
+gp-chat/target/
+gp-chat/frontend/node_modules/
+gp-chat/frontend/dist/
