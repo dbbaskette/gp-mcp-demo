@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+
+@layer components {
+  table { @apply border-collapse; }
+  th { @apply text-left text-[10px] uppercase tracking-wider text-white/60 bg-surface-800 px-3 py-2; }
+  td { @apply px-3 py-2 border-t border-white/5; }
+  tbody tr:hover { @apply bg-white/5; }
+}
