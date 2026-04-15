@@ -4,12 +4,12 @@ import com.baskettecase.gpchat.chat.ChatWebSocketHandler;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
-import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 import org.springframework.web.socket.server.HandshakeInterceptor;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.Map;
 
@@ -29,8 +29,10 @@ public class WebSocketConfig implements WebSocketConfigurer {
                 @Override
                 public boolean beforeHandshake(ServerHttpRequest req, ServerHttpResponse res,
                                                WebSocketHandler wsh, Map<String, Object> attrs) {
-                    if (req instanceof ServletServerHttpRequest s) {
-                        attrs.put("HTTP.SESSION.ID", s.getServletRequest().getSession(true).getId());
+                    var params = UriComponentsBuilder.fromUri(req.getURI()).build().getQueryParams();
+                    String clientId = params.getFirst("clientId");
+                    if (clientId != null && !clientId.isBlank()) {
+                        attrs.put("CLIENT_ID", clientId);
                     }
                     return true;
                 }

@@ -14,8 +14,8 @@ class PersonaConfigValidatorTest {
     @Test
     void acceptsValidConfig() {
         var cfg = new PersonaConfig(
-            List.of(new PersonaConfig.AuthProvider("feauxauth", "https://localhost", "dynamic", null, null, List.of("openid"))),
-            List.of(new PersonaConfig.McpServer("gp-mcp", "https://localhost/mcp", "Greenplum MCP")),
+            List.of(new PersonaConfig.AuthProvider("feauxauth", "https://localhost", null, "dynamic", null, null, List.of("openid"))),
+            List.of(new PersonaConfig.McpServer("gp-mcp", "https://localhost/mcp", null, "Greenplum MCP")),
             List.of(new PersonaConfig.Persona("viewer", "Viewer", "ro", "feauxauth", "gp-mcp"))
         );
         validator.validate(cfg);
@@ -24,8 +24,8 @@ class PersonaConfigValidatorTest {
     @Test
     void rejectsDuplicatePersonaIds() {
         var cfg = new PersonaConfig(
-            List.of(new PersonaConfig.AuthProvider("feauxauth", "https://localhost", "dynamic", null, null, List.of("openid"))),
-            List.of(new PersonaConfig.McpServer("gp-mcp", "https://localhost/mcp", "Greenplum MCP")),
+            List.of(new PersonaConfig.AuthProvider("feauxauth", "https://localhost", null, "dynamic", null, null, List.of("openid"))),
+            List.of(new PersonaConfig.McpServer("gp-mcp", "https://localhost/mcp", null, "Greenplum MCP")),
             List.of(
                 new PersonaConfig.Persona("viewer", "A", "", "feauxauth", "gp-mcp"),
                 new PersonaConfig.Persona("viewer", "B", "", "feauxauth", "gp-mcp")
@@ -38,8 +38,8 @@ class PersonaConfigValidatorTest {
     @Test
     void rejectsUnknownAuthProviderReference() {
         var cfg = new PersonaConfig(
-            List.of(new PersonaConfig.AuthProvider("feauxauth", "https://localhost", "dynamic", null, null, List.of("openid"))),
-            List.of(new PersonaConfig.McpServer("gp-mcp", "https://localhost/mcp", "Greenplum MCP")),
+            List.of(new PersonaConfig.AuthProvider("feauxauth", "https://localhost", null, "dynamic", null, null, List.of("openid"))),
+            List.of(new PersonaConfig.McpServer("gp-mcp", "https://localhost/mcp", null, "Greenplum MCP")),
             List.of(new PersonaConfig.Persona("viewer", "V", "", "nope", "gp-mcp"))
         );
         assertThatThrownBy(() -> validator.validate(cfg))
@@ -49,8 +49,8 @@ class PersonaConfigValidatorTest {
     @Test
     void rejectsUnknownMcpServerReference() {
         var cfg = new PersonaConfig(
-            List.of(new PersonaConfig.AuthProvider("feauxauth", "https://localhost", "dynamic", null, null, List.of("openid"))),
-            List.of(new PersonaConfig.McpServer("gp-mcp", "https://localhost/mcp", "Greenplum MCP")),
+            List.of(new PersonaConfig.AuthProvider("feauxauth", "https://localhost", null, "dynamic", null, null, List.of("openid"))),
+            List.of(new PersonaConfig.McpServer("gp-mcp", "https://localhost/mcp", null, "Greenplum MCP")),
             List.of(new PersonaConfig.Persona("viewer", "V", "", "feauxauth", "missing"))
         );
         assertThatThrownBy(() -> validator.validate(cfg))
@@ -60,8 +60,8 @@ class PersonaConfigValidatorTest {
     @Test
     void rejectsMalformedIssuerUri() {
         var cfg = new PersonaConfig(
-            List.of(new PersonaConfig.AuthProvider("feauxauth", "not a url", "dynamic", null, null, List.of("openid"))),
-            List.of(new PersonaConfig.McpServer("gp-mcp", "https://localhost/mcp", "Greenplum MCP")),
+            List.of(new PersonaConfig.AuthProvider("feauxauth", "not a url", null, "dynamic", null, null, List.of("openid"))),
+            List.of(new PersonaConfig.McpServer("gp-mcp", "https://localhost/mcp", null, "Greenplum MCP")),
             List.of(new PersonaConfig.Persona("viewer", "V", "", "feauxauth", "gp-mcp"))
         );
         assertThatThrownBy(() -> validator.validate(cfg))

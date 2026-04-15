@@ -1,8 +1,8 @@
 package com.baskettecase.gpchat.mcp;
 
 import com.baskettecase.gpchat.auth.PersonaSessionStore;
+import com.baskettecase.gpchat.chat.AuditEventBus;
 import com.baskettecase.gpchat.config.PersonaConfig;
-import io.modelcontextprotocol.spec.McpSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -19,64 +19,89 @@ public class McpGateway {
     private final PersonaConfig cfg;
     private final PersonaSessionStore store;
     private final McpClientRegistry registry;
+    private final AuditEventBus audit;
 
-    public McpGateway(PersonaConfig cfg, PersonaSessionStore store, McpClientRegistry registry) {
+    public McpGateway(PersonaConfig cfg, PersonaSessionStore store, McpClientRegistry registry, AuditEventBus audit) {
         this.cfg = cfg;
         this.store = store;
         this.registry = registry;
+        this.audit = audit;
     }
 
     public record ToolDescriptor(String name, String description, Map<String, Object> inputSchema) {}
     public record ToolResult(String status, Object content) {}
 
-    public List<ToolDescriptor> listTools(String sessionId, String personaId) {
+    /**
+     * Verify MCP connectivity at login time.
+     */
+    @SuppressWarnings("unchecked")
+    public List<ToolDescriptor> verifyConnection(String clientId, String personaId) {
         var persona = lookup(personaId);
-        var token = requireToken(sessionId, personaId);
-        try (var client = registry.openClient(persona.mcpServer(), token)) {
-            return client.listTools().tools().stream()
-                .map(t -> new ToolDescriptor(t.name(), t.description(), jsonSchemaToMap(t.inputSchema())))
-                .toList();
+        var token = requireToken(clientId, personaId);
+        audit.recordMcp(personaId, persona.mcpServer(), "connect", "verifying connection", null);
+        try {
+            var session = registry.initialize(persona.mcpServer(), token);
+            var rawTools = registry.listTools(session);
+            var tools = rawTools.stream().map(this::toDescriptor).toList();
+            audit.recordMcp(personaId, persona.mcpServer(), "connected",
+                tools.size() + " tools available", tools.stream().map(ToolDescriptor::name).toList());
+            return tools;
+        } catch (Exception e) {
+            audit.recordMcp(personaId, persona.mcpServer(), "error", e.getMessage(), null);
+            throw new RuntimeException("MCP verification failed for " + personaId + ": " + e.getMessage(), e);
         }
     }
 
-    public ToolResult callTool(String sessionId, String personaId, String name, Map<String, Object> args) {
+    /**
+     * Open a turn-scoped MCP session.
+     */
+    public McpClientRegistry.McpSession openTurnSession(String clientId, String personaId) {
         var persona = lookup(personaId);
-        var token = requireToken(sessionId, personaId);
-        try (var client = registry.openClient(persona.mcpServer(), token)) {
-            McpSchema.CallToolResult r = client.callTool(new McpSchema.CallToolRequest(name, args));
-            boolean err = r.isError() != null && r.isError();
-            String status = err ? classify(r) : "success";
-            return new ToolResult(status, r.content());
+        var token = requireToken(clientId, personaId);
+        return registry.initialize(persona.mcpServer(), token);
+    }
+
+    public List<ToolDescriptor> listTools(McpClientRegistry.McpSession session) {
+        return registry.listTools(session).stream().map(this::toDescriptor).toList();
+    }
+
+    @SuppressWarnings("unchecked")
+    public ToolResult callTool(McpClientRegistry.McpSession session, String personaId, String name, Map<String, Object> args) {
+        try {
+            var result = registry.callTool(session, name, args);
+            boolean isError = Boolean.TRUE.equals(result.get("isError"));
+            String status = isError ? classify(result) : "success";
+            return new ToolResult(status, result.get("content"));
         } catch (Exception e) {
             log.error("MCP tool call failed: {} for persona {}", name, personaId, e);
+            audit.recordMcp(personaId, lookup(personaId).mcpServer(), "call_error", name + ": " + e.getMessage(), null);
             return new ToolResult("error", e.getMessage());
         }
     }
 
-    private String classify(McpSchema.CallToolResult r) {
-        String s = String.valueOf(r.content()).toLowerCase();
+    @SuppressWarnings("unchecked")
+    private ToolDescriptor toDescriptor(Map<String, Object> raw) {
+        String name = (String) raw.getOrDefault("name", "");
+        String desc = (String) raw.getOrDefault("description", "");
+        Map<String, Object> schema = (Map<String, Object>) raw.getOrDefault("inputSchema", Map.of());
+        return new ToolDescriptor(name, desc, schema);
+    }
+
+    @SuppressWarnings("unchecked")
+    private String classify(Map<String, Object> result) {
+        String s = String.valueOf(result.get("content")).toLowerCase();
         if (s.contains("permission denied") || s.contains("not allowed") || s.contains("forbidden")) return "denied";
         return "error";
     }
 
-    private PersonaConfig.Persona lookup(String personaId) {
+    public PersonaConfig.Persona lookup(String personaId) {
         return cfg.personas().stream().filter(p -> p.id().equals(personaId)).findFirst()
             .orElseThrow(() -> new IllegalArgumentException("unknown persona: " + personaId));
     }
 
-    private String requireToken(String sessionId, String personaId) {
-        return store.get(sessionId, personaId)
+    public String requireToken(String clientId, String personaId) {
+        return store.get(clientId, personaId)
             .map(PersonaSessionStore.PersonaToken::accessToken)
             .orElseThrow(() -> new NotLoggedInException(personaId));
-    }
-
-    private static Map<String, Object> jsonSchemaToMap(McpSchema.JsonSchema schema) {
-        if (schema == null) return Map.of();
-        Map<String, Object> m = new LinkedHashMap<>();
-        if (schema.type() != null) m.put("type", schema.type());
-        if (schema.properties() != null) m.put("properties", schema.properties());
-        if (schema.required() != null) m.put("required", schema.required());
-        if (schema.additionalProperties() != null) m.put("additionalProperties", schema.additionalProperties());
-        return m;
     }
 }

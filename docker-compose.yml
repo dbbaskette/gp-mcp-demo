@@ -81,11 +81,8 @@ services:
         condition: service_started
       mcp:
         condition: service_started
-    environment:
-      GEMINI_API_KEY:    ${GEMINI_API_KEY:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      OPENAI_API_KEY:    ${OPENAI_API_KEY:-}
-      FEAUXAUTH_ISSUER_URI: https://localhost
+    env_file:
+      - ./gp-chat/.env
     volumes:
       - ./gp-chat/config/personas.yaml:/app/config/personas.yaml:ro
     restart: unless-stopped

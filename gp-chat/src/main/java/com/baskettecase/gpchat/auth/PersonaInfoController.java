@@ -2,7 +2,6 @@ package com.baskettecase.gpchat.auth;
 
 import com.baskettecase.gpchat.config.PersonaConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -28,11 +27,15 @@ public class PersonaInfoController {
     }
 
     @GetMapping("/persona/{id}")
-    public Map<String, Object> get(@PathVariable("id") String personaId, HttpServletRequest req) {
-        String sessionId = req.getSession(true).getId();
-        var tok = store.get(sessionId, personaId);
+    public Map<String, Object> get(@PathVariable("id") String personaId,
+                                   @RequestParam(value = "clientId", required = false) String clientId) {
         Map<String, Object> out = new HashMap<>();
         out.put("id", personaId);
+        if (clientId == null || clientId.isBlank()) {
+            out.put("loggedIn", false);
+            return out;
+        }
+        var tok = store.get(clientId, personaId);
         out.put("loggedIn", tok.isPresent());
         tok.ifPresent(t -> {
             out.put("expiresAt", t.expiresAt().toString());

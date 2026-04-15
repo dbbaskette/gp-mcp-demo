@@ -11,7 +11,7 @@ import java.util.function.Consumer;
 public class DemoModeService {
 
     private final ChatOrchestrator orchestrator;
-    private final Executor exec = Executors.newVirtualThreadPerTaskExecutor();
+    private final Executor exec = Executors.newCachedThreadPool();
 
     public DemoModeService(ChatOrchestrator orchestrator) { this.orchestrator = orchestrator; }
 

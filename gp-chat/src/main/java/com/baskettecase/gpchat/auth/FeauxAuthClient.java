@@ -36,9 +36,9 @@ public class FeauxAuthClient {
     private record RegisterResponse(@JsonProperty("client_id") String clientId,
                                     @JsonProperty("client_secret") String clientSecret) {}
 
-    public FeauxAuthClient(PersonaConfig cfg, RestClient.Builder restClientBuilder) {
+    public FeauxAuthClient(PersonaConfig cfg) {
         this.cfg = cfg;
-        this.http = restClientBuilder.build();
+        this.http = RestClient.create();
     }
 
     @PostConstruct
@@ -48,24 +48,38 @@ public class FeauxAuthClient {
             if ("static".equals(p.clientRegistrationMode())) {
                 clientCredsByProvider.put(p.id(), new ClientCreds(p.clientId(), p.clientSecret()));
             } else {
-                try {
-                    var body = Map.of(
-                        "client_name", "gp-chat",
-                        "redirect_uris", List.of("https://localhost/chat/api/auth/callback"),
-                        "grant_types", List.of("authorization_code", "refresh_token"),
-                        "token_endpoint_auth_method", "client_secret_post",
-                        "scope", String.join(" ", p.scopes())
-                    );
-                    var resp = http.post()
-                        .uri(p.issuerUri() + "/oauth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(body)
-                        .retrieve()
-                        .body(RegisterResponse.class);
-                    clientCredsByProvider.put(p.id(), new ClientCreds(resp.clientId(), resp.clientSecret()));
-                    log.info("Dynamically registered OAuth client for provider '{}'", p.id());
-                } catch (Exception e) {
-                    log.warn("Failed to register OAuth client for provider '{}': {}", p.id(), e.getMessage());
+                registerDynamic(p);
+            }
+        }
+    }
+
+    private void registerDynamic(PersonaConfig.AuthProvider p) {
+        int maxAttempts = 10;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                var body = Map.of(
+                    "client_name", "gp-chat",
+                    "redirect_uris", List.of("https://localhost/chat/api/auth/callback"),
+                    "grant_types", List.of("authorization_code", "refresh_token"),
+                    "token_endpoint_auth_method", "client_secret_post",
+                    "scope", String.join(" ", p.scopes())
+                );
+                var resp = http.post()
+                    .uri(p.serverUri() + "/oauth/register")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(RegisterResponse.class);
+                clientCredsByProvider.put(p.id(), new ClientCreds(resp.clientId(), resp.clientSecret()));
+                log.info("Dynamically registered OAuth client for provider '{}'", p.id());
+                return;
+            } catch (Exception e) {
+                if (attempt < maxAttempts) {
+                    log.warn("Registration attempt {}/{} for provider '{}' failed, retrying in 3s: {}",
+                        attempt, maxAttempts, p.id(), e.getMessage());
+                    try { Thread.sleep(3000); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); return; }
+                } else {
+                    log.error("Failed to register OAuth client for provider '{}' after {} attempts: {}", p.id(), maxAttempts, e.getMessage());
                 }
             }
         }
@@ -105,7 +119,7 @@ public class FeauxAuthClient {
         form.add("client_secret", creds.clientSecret());
         form.add("code_verifier", codeVerifier);
         return http.post()
-            .uri(provider.issuerUri() + "/oauth/token")
+            .uri(provider.serverUri() + "/oauth/token")
             .contentType(MediaType.APPLICATION_FORM_URLENCODED)
             .body(form)
             .retrieve()

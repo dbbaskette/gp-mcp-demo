@@ -13,13 +13,20 @@ public record PersonaConfig(
     public record AuthProvider(
         String id,
         String issuerUri,
+        String internalUri,
         String clientRegistrationMode,
         String clientId,
         String clientSecret,
         List<String> scopes
-    ) {}
+    ) {
+        /** URL for server-to-server calls (registration, token exchange). Falls back to issuerUri. */
+        public String serverUri() { return internalUri != null ? internalUri : issuerUri; }
+    }
 
-    public record McpServer(String id, String url, String label) {}
+    public record McpServer(String id, String url, String internalUrl, String label) {
+        /** URL for server-to-server calls. Falls back to url. */
+        public String serverUrl() { return internalUrl != null ? internalUrl : url; }
+    }
 
     public record Persona(
         String id,

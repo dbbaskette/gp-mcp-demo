@@ -1,3 +1,5 @@
+import { getClientId } from './clientId';
+
 export type Inbound =
   | { type: 'user_message'; personaId: string; content: string; providerId: string; modelId: string }
   | { type: 'demo_message'; personaIds: string[]; content: string; providerId: string; modelId: string }
@@ -12,7 +14,8 @@ export type Outbound =
   | { type: 'error'; personaId: string; code: string; message: string };
 
 export function openSocket(onEvent: (e: Outbound) => void) {
-  const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/chat/ws/chat`);
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${proto}://${location.host}/chat/ws/chat?clientId=${getClientId()}`);
   ws.onmessage = m => onEvent(JSON.parse(m.data));
   return ws;
 }

@@ -47,21 +47,50 @@ First start takes several minutes (Greenplum warm-up + TPC-DS load).
 | https://localhost/.well-known/oauth-protected-resource | MCP resource metadata |
 | localhost:15432 | Greenplum (gpadmin / VMware1! / tpcds) |
 
+## Create the demo identities
+
+Once the stack is healthy (Greenplum loaded, FeauxAuth reachable at
+`https://localhost`), run:
+
+```bash
+./setup-demo-users.sh
+```
+
+This creates two Greenplum roles (`readonly_user`, `analyst_user`, password
+`password`) with tiered SELECT grants, and three FeauxAuth users bound to the
+`readonly` / `analyst` / `admin` roles the MCP server maps to permission levels
+in [mcp-docker-config.yaml](mcp-docker-config.yaml).
+
 ## Wire Claude Desktop to the MCP server
 
 ```bash
-./claude-mcp-config on    # adds gp-mcp to Claude Desktop + restarts it
-./claude-mcp-config off   # removes it + restarts
+./claude-mcp-config.sh on        # register gp-mcp in Claude Desktop + restart
+./claude-mcp-config.sh off       # remove it + restart
+./claude-mcp-config.sh relogin   # clear cached tokens so you can log in as a different user
 ```
 
-On first launch, `mcp-remote` does OAuth 2.1 + PKCE against FeauxAuth; log in as
-`demo@feauxauth.local` / `password`. Tokens are cached under `~/.mcp-auth/`.
+On first launch, `mcp-remote` does OAuth 2.1 + PKCE against FeauxAuth. Log in
+as one of the demo users below; tokens are cached under `~/.mcp-auth/`, so use
+`relogin` between demo segments to switch identities.
+
+## Demo identities (password for all: `password`)
+
+| FeauxAuth login | JWT role | MCP permission level | Greenplum user | What they can do |
+|---|---|---|---|---|
+| `viewer@feauxauth.local` | `readonly` | readonly | `readonly_user` | SELECT on `customer`, `store_sales`, `item` |
+| `analyst@feauxauth.local` | `analyst` | analyst | `analyst_user` | SELECT on all tpcds tables |
+| `dba@feauxauth.local` | `admin` | admin | `gpadmin` | Full privileges |
+
+Suggested demo flow: ask Claude the same prompt ("list tables", "count rows in
+`web_sales`", "drop `item`") after logging in as each user — the viewer hits
+`permission denied` on most tables, the analyst reads everything, the DBA can
+do DDL.
 
 ## Credentials
 
-- FeauxAuth admin UI: `admin` / `feauxauth`
-- Demo OIDC user: `demo@feauxauth.local` / `password` (has roles: `analyst,user`)
-- Greenplum: `gpadmin` / `VMware1!`
+- FeauxAuth admin UI: `admin` / `feauxauth` at `https://localhost/admin/`
+- Demo OIDC users: see table above (all passwords = `password`)
+- Greenplum superuser: `gpadmin` / `VMware1!` on `localhost:15432`
 
 ## How the pieces fit together
 

@@ -35,18 +35,18 @@ auth:
       - name: "readonly"
         roles:
           - "readonly"
-        database_username: "gpadmin"
-        database_password: "VMware1!"
+        database_username: "readonly_user"
+        database_password: "password"
       - name: "analyst"
         roles:
           - "analyst"
-        database_username: "gpadmin"
-        database_password: "VMware1!"
+        database_username: "analyst_user"
+        database_password: "password"
       - name: "admin"
         roles:
           - "admin"
         database_username: "gpadmin"
         database_password: "VMware1!"
 
-    default_database_username: "gpadmin"
-    default_database_password: "VMware1!"
+    default_database_username: "readonly_user"
+    default_database_password: "password"

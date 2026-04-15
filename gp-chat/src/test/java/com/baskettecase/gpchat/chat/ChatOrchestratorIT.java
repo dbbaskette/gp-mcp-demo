@@ -5,7 +5,6 @@ import com.baskettecase.gpchat.mcp.McpGateway;
 import com.baskettecase.gpchat.mcp.NotLoggedInException;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,7 +17,7 @@ class ChatOrchestratorIT {
     void emitsAuthRequired_whenPersonaNotLoggedIn() {
         var models = mock(ModelRegistry.class);
         var gateway = mock(McpGateway.class);
-        when(gateway.listTools(any(), any())).thenThrow(new NotLoggedInException("analyst"));
+        when(gateway.openTurnSession(any(), any())).thenThrow(new NotLoggedInException("analyst"));
 
         var conversations = new ConversationStore();
         var audit = new AuditEventBus(event -> {});
@@ -36,7 +35,7 @@ class ChatOrchestratorIT {
     void noInteractionWithModel_whenNotLoggedIn() {
         var models = mock(ModelRegistry.class);
         var gateway = mock(McpGateway.class);
-        when(gateway.listTools(any(), any())).thenThrow(new NotLoggedInException("viewer"));
+        when(gateway.openTurnSession(any(), any())).thenThrow(new NotLoggedInException("viewer"));
 
         var orch = new ChatOrchestrator(models, gateway, new ConversationStore(), new AuditEventBus(e -> {}));
         orch.handle("s", "viewer", "hi", "openai", "gpt-4o", new CopyOnWriteArrayList<>()::add);

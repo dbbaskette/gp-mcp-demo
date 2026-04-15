@@ -1,12 +1,14 @@
 authProviders:
   - id: feauxauth
     issuerUri: https://localhost
+    internalUri: http://feauxauth:8080
     clientRegistrationMode: dynamic
     scopes: [openid, profile, email]
 
 mcpServers:
   - id: gp-mcp
     url: https://localhost/mcp
+    internalUrl: http://mcp:8080/mcp
     label: "Greenplum MCP"
 
 personas:
