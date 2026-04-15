@@ -60,18 +60,52 @@ services:
     entrypoint: ["/bin/bash", "/tpcds-load.sh"]
     restart: "no"
 
+  demo-users:
+    image: postgres:16
+    depends_on:
+      tpcds-loader:
+        condition: service_completed_successfully
+      feauxauth:
+        condition: service_started
+    volumes:
+      - ./docker/setup-demo-users.sh:/setup-demo-users.sh:ro
+    environment:
+      GPHOST: greenplum-sne
+      GPPORT: "5432"
+      GPUSER: gpadmin
+      PGPASSWORD: "VMware1!"
+      DATABASE: tpcds
+      FEAUXAUTH_URL: https://feauxauth:8443
+      FEAUXAUTH_ADMIN_USER: admin
+      FEAUXAUTH_ADMIN_PASS: feauxauth
+    entrypoint: ["/bin/bash", "/setup-demo-users.sh"]
+    restart: "no"
+
   mcp:
     image: debian:stable-slim
     depends_on:
       feauxauth:
         condition: service_started
-      tpcds-loader:
+      demo-users:
         condition: service_completed_successfully
     volumes:
       - ../Tanzu-GP-MCP-Server/gp-mcp-server-linux-arm64:/app/gp-mcp-server:ro
       - ./mcp-docker-config.yaml:/app/config.yaml:ro
     working_dir: /app
-    command: ["/app/gp-mcp-server", "streamable-http", "--config-file=/app/config.yaml"]
+    command: ["/app/gp-mcp-server", "streamable-http", "--config-file=/app/config.yaml", "--readonly=false"]
+    restart: unless-stopped
+
+  gp-chat:
+    build: ./gp-chat
+    depends_on:
+      feauxauth:
+        condition: service_started
+      mcp:
+        condition: service_started
+    env_file:
+      - ./gp-chat/.env
+    volumes:
+      - ./gp-chat/config/personas.yaml:/app/config/personas.yaml:ro
     restart: unless-stopped
 
   caddy:
@@ -79,6 +113,7 @@ services:
     depends_on:
       - feauxauth
       - mcp
+      - gp-chat
     ports:
       - "443:443"
       - "80:80"

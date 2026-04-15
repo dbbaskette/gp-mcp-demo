@@ -1,0 +1,129 @@
+                    
+    
+                    
+    
+                    
+    
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>View Source</title>
+        <link rel="canonical" href="/pages/viewpage.action?pageId=$action.page.id" />
+        <script>
+window.WRM=window.WRM||{};window.WRM._unparsedData=window.WRM._unparsedData||{};window.WRM._unparsedErrors=window.WRM._unparsedErrors||{};
+WRM._unparsedData["com.atlassian.plugins.atlassian-plugins-webresource-plugin:context-path.context-path"]="\u0022\u0022";
+if(window.WRM._dataArrived)window.WRM._dataArrived();</script>
+<link rel="stylesheet" href="/s/dd90fa086a40be4810c7f6d0508e7db3-CDN/duu5zu/9111/1mvau1o/288c284645ef16b5aecbfdf4a89b8239/_/download/contextbatch/css/_super/batch.css" data-wrm-key="_super" data-wrm-batch-type="context" media="all">
+<link rel="stylesheet" href="/s/d41d8cd98f00b204e9800998ecf8427e-CDN/duu5zu/9111/1mvau1o/e261641f5842872d96cbfb063789f0e0/_/download/contextbatch/css/plugin.viewsource,-_super/batch.css" data-wrm-key="plugin.viewsource,-_super" data-wrm-batch-type="context" media="all">
+<link rel="stylesheet" href="/s/ed3f3a5c97dcc2b305311e58a45d7b01-CDN/duu5zu/9111/1mvau1o/cc24ea4d9df800b4a74dd2eafa778220/_/download/contextbatch/css/page,editor-content,-_super/batch.css?cefp_collab_enabled=false&amp;cefp_ed_perm=false&amp;cefp_is_admin=false&amp;gatekeeper-ui-v2=true&amp;table-resizable.breaking-text=false" data-wrm-key="page,editor-content,-_super" data-wrm-batch-type="context" media="all">
+<link rel="stylesheet" href="/s/ed3f3a5c97dcc2b305311e58a45d7b01-CDN/duu5zu/9111/1mvau1o/cc24ea4d9df800b4a74dd2eafa778220/_/download/contextbatch/css/page,editor-content,-_super/batch.css?cefp_collab_enabled=false&amp;cefp_ed_perm=false&amp;cefp_is_admin=false&amp;gatekeeper-ui-v2=true&amp;media=print&amp;table-resizable.breaking-text=false" media="print" data-wrm-key="page,editor-content,-_super" data-wrm-batch-type="context">
+<link rel="stylesheet" href="/s/duu5zu/9111/1mvau1o/19/_/styles/colors.css" media="all">
+<link rel="stylesheet" href="/s/duu5zu/9111/1mvau1o/19/_/styles/custom.css" media="all">
+
+    </head>
+
+    <body class="mceContentBody aui-theme-default wiki-content fullsize">
+        <p>&nbsp;</p>         <h1 data-nh-numbering="1. "> <span style="color:var(--ds-text,#000000);">Greenplum DDL Example for Columnar Append-Optimized Table (No Compression)</span></h1><p>To get high-quality compression recommendations from an LLM via an<span> </span><strong class="Yjhzub" data-complete="true" data-processed="true">MCP server</strong>, you need to provide it with &quot;ground truth&quot; data.<br />Here are the steps to set up the environment, populate it, and then query the LLM for optimization.</p><h2 data-nh-numbering="1.1. "><span class="Yjhzub">Create the Base Table (No Compression)</span></h2><p><br /></p><table class="wysiwyg-macro" data-macro-name="code" data-macro-id="6e0046e6-4737-4f85-b241-1709ba47644f" aria-label="code macro" data-macro-parameters="language=sql" data-macro-schema-version="1" style="background-image: url(https://vmw-confluence.broadcom.net/plugins/servlet/confluence/placeholder/macro-heading?definition=e2NvZGU6bGFuZ3VhZ2U9c3FsfQ&amp;locale=en_US&amp;version=2); background-repeat: no-repeat;" data-macro-body-type="PLAIN_TEXT"><tr><td class="wysiwyg-macro-body"><pre>CREATE TABLE catalog_sales_base (
+    cs_sold_date_sk integer,
+    cs_item_sk integer,
+    cs_order_number integer,
+    cs_ext_sales_price numeric(7,2)
+)
+WITH (appendoptimized=true, orientation=column, compresstype=none)
+DISTRIBUTED BY (cs_item_sk);</pre></td></tr></table><h2 data-nh-numbering="1.2. "><span class="Yjhzub"><span class="Yjhzub"> Insert Sample Data</span></span></h2><p><br /></p><table class="wysiwyg-macro" data-macro-name="code" data-macro-id="3afb809c-d0a0-4116-9486-f9445374f4d9" aria-label="code macro" data-macro-parameters="language=sql" data-macro-schema-version="1" style="background-image: url(https://vmw-confluence.broadcom.net/plugins/servlet/confluence/placeholder/macro-heading?definition=e2NvZGU6bGFuZ3VhZ2U9c3FsfQ&amp;locale=en_US&amp;version=2); background-repeat: no-repeat;" data-macro-body-type="PLAIN_TEXT"><tr><td class="wysiwyg-macro-body"><pre>INSERT INTO catalog_sales_base SELECT 
+    (i % 30) + 1,          -- Repetitive dates (Good for RLE)
+    i,                     -- Unique IDs (Bad for compression)
+    (i / 10),              -- Semi-repetitive orders
+    (random() * 100)::numeric(7,2) 
+FROM generate_series(1, 10000) s(i);</pre></td></tr></table><p><br /></p><h2 data-nh-numbering="1.3. "><span style="color:var(--ds-text,#000000);">Data Analysis and Query Requests</span></h2><ol><li><span style="color:var(--ds-text,#000000);"><span>I am using a Greenplum Columnar AO table with no compression. recommend the best compresstype and compresslevel for table catalog_sales_base</span></span></li></ol><h1 data-nh-numbering="2. ">Schema and Data Management Examples</h1><p><span>In Greenplum, tables and columns may be created using arbitrary, meaningless names or cryptic terminology. To clarify their purpose, comments can be added to both tables and columns.</span></p><h2 data-nh-numbering="2.1. ">Schema and Table Creation (Using Abstract Naming)</h2><p><span>This section defines the table structures using non-descriptive names. </span></p><p><span><span><strong>Note:</strong> There are no foreign key relationships maintained here. LLM should identify the relations.</span></span></p><table class="wysiwyg-macro" data-macro-name="code" data-macro-id="84a17dac-26d1-4e03-9dd9-503bca9726a2" aria-label="code macro" data-macro-parameters="language=sql" data-macro-schema-version="1" style="background-image: url(https://vmw-confluence.broadcom.net/plugins/servlet/confluence/placeholder/macro-heading?definition=e2NvZGU6bGFuZ3VhZ2U9c3FsfQ&amp;locale=en_US&amp;version=2); background-repeat: no-repeat;" data-macro-body-type="PLAIN_TEXT"><tr><td class="wysiwyg-macro-body"><pre>-- Creating a database with a random ID
+CREATE DATABASE IF NOT EXISTS db_v7x_992;
+
+-- Connect to the new DB (in psql)
+\c db_v7x_992
+
+-- Create a random schema name
+CREATE SCHEMA sc_m4_001;
+
+-- Set the search path so you don't have to reference 'sc_m4_001' constantly
+SET search_path TO sc_m4_001, public;
+
+-- 1. Sales Transactions Table
+CREATE TABLE tx_data_01 (
+    f1 INT,      -- Sale ID
+    f2 DATE,     -- Sale Date
+    f3 NUMERIC,  -- Amount
+    f4 INT,      -- Product Link
+    f5 INT,      -- Customer Link
+    f6 INT       -- Sales Person Link
+) DISTRIBUTED BY (f1);
+
+-- 2. Product Metadata Table
+CREATE TABLE ref_a_100 (
+    k1 INT, 
+    k2 TEXT, 
+    k3 TEXT
+) DISTRIBUTED BY (k1);
+
+-- 3. Customer Master Table
+CREATE TABLE metadata_z_99 (
+    c_id INT, 
+    c_attr1 TEXT, 
+    c_attr2 TEXT, 
+    c_attr3 TEXT
+) DISTRIBUTED BY (c_id);
+
+-- 4. Sales Staff Table
+CREATE TABLE staff_x_007 (
+    s_pk INT, 
+    s_val1 TEXT, 
+    s_val2 TEXT, 
+    s_val3 DATE
+) DISTRIBUTED BY (s_pk);</pre></td></tr></table><h2 data-nh-numbering="2.2. ">Add &quot;Comments&quot; to provide the actual intensions</h2><p><span>Use the </span><a href="https://techdocs.broadcom.com/us/en/vmware-tanzu/data-solutions/tanzu-greenplum/6/greenplum-database/ref_guide-sql_commands-COMMENT.html"><span>COMMENT ON</span></a><span> command to add comments.</span></p><table class="wysiwyg-macro" data-macro-name="code" data-macro-id="3b239140-7e0d-4e6b-9fc7-e40fac54b3db" aria-label="code macro" data-macro-parameters="language=sql" data-macro-schema-version="1" style="background-image: url(https://vmw-confluence.broadcom.net/plugins/servlet/confluence/placeholder/macro-heading?definition=e2NvZGU6bGFuZ3VhZ2U9c3FsfQ&amp;locale=en_US&amp;version=2); background-repeat: no-repeat;" data-macro-body-type="PLAIN_TEXT"><tr><td class="wysiwyg-macro-body"><pre>COMMENT ON DATABASE db_v7x_992 IS 'Main Sales Data Warehouse';
+COMMENT ON SCHEMA sc_m4_001 IS 'Production Sales Schema - V1';
+
+-- Table Descriptions
+COMMENT ON TABLE tx_data_01 IS 'Primary sales transaction log';
+COMMENT ON TABLE ref_a_100 IS 'Master reference for product categories';
+COMMENT ON TABLE metadata_z_99 IS 'Master customer profile records';
+COMMENT ON TABLE staff_x_007 IS 'Employee directory for sales representatives';
+
+-- Column Descriptions (Intentions)
+COMMENT ON COLUMN tx_data_01.f1 IS 'Unique Sale ID';
+COMMENT ON COLUMN tx_data_01.f4 IS 'Link to Product ID (ref_a_100.k1)';
+COMMENT ON COLUMN tx_data_01.f5 IS 'Link to Customer ID (metadata_z_99.c_id)';
+COMMENT ON COLUMN tx_data_01.f6 IS 'Link to Sales Rep ID (staff_x_007.s_pk)';
+
+COMMENT ON COLUMN ref_a_100.k2 IS 'Official Product Name';
+COMMENT ON COLUMN metadata_z_99.c_attr1 IS 'Customer Full Name';
+COMMENT ON COLUMN staff_x_007.s_val1 IS 'Sales Person Name';</pre></td></tr></table><p><br /></p><h2 data-nh-numbering="2.3. ">Insert sample data</h2><table class="wysiwyg-macro" data-macro-name="code" data-macro-id="4359127b-2b12-40f0-8858-de9e2206f21d" aria-label="code macro" data-macro-parameters="language=sql" data-macro-schema-version="1" style="background-image: url(https://vmw-confluence.broadcom.net/plugins/servlet/confluence/placeholder/macro-heading?definition=e2NvZGU6bGFuZ3VhZ2U9c3FsfQ&amp;locale=en_US&amp;version=2); background-repeat: no-repeat;" data-macro-body-type="PLAIN_TEXT"><tr><td class="wysiwyg-macro-body"><pre>-- Insert Product Metadata (ref_a_100)
+INSERT INTO ref_a_100 (k1, k2, k3) VALUES 
+(101, 'Quantum Laptop Pro', 'Electronics'),
+(102, 'Ergo-Mesh Office Chair', 'Furniture'),
+(103, 'Noise-Cancel Headphones', 'Electronics');
+
+-- Insert Customer Master Data (metadata_z_99)
+INSERT INTO metadata_z_99 (c_id, c_attr1, c_attr2, c_attr3) VALUES 
+(5001, 'Alice Johnson', 'alice.j@email.com', 'North America'),
+(5002, 'Robert Smith', 'rob.smith@email.com', 'Europe'),
+(5003, 'Charlie Davis', 'charlie.d@email.com', 'Asia');
+
+-- Insert Sales Staff Directory (staff_x_007)
+INSERT INTO staff_x_007 (s_pk, s_val1, s_val2, s_val3) VALUES 
+(701, 'Sarah Miller', 'West Coast', '2021-03-15'),
+(702, 'David Wilson', 'East Coast', '2020-11-20'),
+(703, 'Elena Rodriguez', 'International', '2022-01-10');
+
+-- Insert Sales Transactions (tx_data_01)
+INSERT INTO tx_data_01 (f1, f2, f3, f4, f5, f6) VALUES 
+(10001, '2024-01-05', 1250.00, 101, 5001, 701),  -- Alice bought Laptop from Sarah
+(10002, '2024-01-06', 350.50,  102, 5002, 702),  -- Robert bought Chair from David
+(10003, '2024-01-07', 199.99,  103, 5003, 703),  -- Charlie bought Headphones from Elena
+(10004, '2024-01-08', 1250.00, 101, 5002, 701);  -- Robert bought Laptop from Sarah
+
+INSERT INTO tx_data_01 (f1, f2, f3, f4, f5, f6) VALUES 
+(10006, '2024-01-05', 1250.00, 101, 5001, 701),  -- Alice bought Laptop from Sarah
+INSERT INTO tx_data_01 (f1, f2, f3, f4, f5, f6) VALUES 
+(10007, '2024-01-05', 1250.00, 1010, 50010, 7001); -- Random invalid data</pre></td></tr></table><h2 data-nh-numbering="2.4. "><span style="color:var(--ds-text,#000000);">Data Analysis and Query Requests</span></h2><ol><li data-uuid="2d0e68d5-8965-4fdd-b37b-ad0d86f2514d">​​Tell me which table stores my employee information and which one tracks money made from sales.</li><li data-uuid="5e1bdaf1-1664-4f03-b64b-c913277495d6">Show me a list of the top 3 sales representatives by total revenue generated in 2024. Use their actual names, not the IDs.</li><li data-uuid="48902230-af84-47cb-88db-b3cca1ce8f9a">Calculate the monthly sales growth for the last three months. I need to see the month and the total transaction amount.</li><li data-uuid="159700c1-c811-48b4-8d29-0427e7749df4">​​Check if there are any sales transactions that don't have a corresponding customer profile or product ID assigned to them.</li></ol><p><br /></p>
+        <p>&nbsp;</p>
+    </body>
+</html>
