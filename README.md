@@ -1,7 +1,16 @@
 # gp-mcp-demo
 
-End-to-end demo stack: Claude Desktop → Tanzu Greenplum MCP Server (OAuth-protected)
-→ FeauxAuth (OIDC authorization server) → Greenplum (TPC-DS dataset).
+End-to-end demo stack showing identity-driven database access through the
+Model Context Protocol (MCP). Three layers of security — OAuth identity,
+MCP policy enforcement, and Greenplum row/table grants — protect a TPC-DS
+dataset behind a single HTTPS endpoint.
+
+**Two client options:**
+
+- **Claude Desktop** — wire Claude directly to the MCP server via `mcp-remote`
+- **gp-chat** — browser-based chat UI (React + Spring Boot) with multi-persona
+  split-pane comparison, a developer panel, and pluggable LLM backends
+  (Gemini, Claude, OpenAI)
 
 All services run in Docker with HTTPS termination via Caddy + mkcert.
 
@@ -45,7 +54,34 @@ First start takes several minutes (Greenplum warm-up + TPC-DS load).
 | https://localhost/oauth/{authorize,token,register,...} | FeauxAuth endpoints |
 | https://localhost/mcp | MCP server (requires Bearer token) |
 | https://localhost/.well-known/oauth-protected-resource | MCP resource metadata |
+| https://localhost/chat/ | gp-chat web UI |
+| https://localhost/chat/ws/chat | gp-chat WebSocket endpoint |
+| https://localhost/chat/api/audit/stream | gp-chat audit SSE stream (DevPanel) |
 | localhost:15432 | Greenplum (gpadmin / VMware1! / tpcds) |
+
+## Using gp-chat (browser UI)
+
+Once the stack is running and demo identities exist, open
+**https://localhost/chat/** in your browser.
+
+- **Single mode** — pick one persona from the top bar, authenticate via popup,
+  and chat normally.
+- **Demo mode** — toggle "Demo" in the header, select multiple personas, and
+  type a single prompt. Each persona runs the query in parallel in split panes
+  so you can compare results side-by-side.
+- **DevPanel** (`⌘\`) — inspect decoded JWT claims, live audit events, and
+  the MCP tool inventory for each persona.
+- **Model picker** — switch between Gemini, Claude, and OpenAI (only providers
+  with API keys in `gp-chat/.env` appear).
+
+gp-chat requires at least one LLM API key. Copy `gp-chat/.env.example` to
+`gp-chat/.env` and fill in whichever keys you have:
+
+```bash
+GEMINI_API_KEY=...
+ANTHROPIC_API_KEY=...
+OPENAI_API_KEY=...
+```
 
 ## Create the demo identities
 
@@ -98,8 +134,19 @@ do DDL.
 - Access tokens include `aud = [client_id, "mcp-server"]` via FeauxAuth's
   `FEAUXAUTH_EXTRA_AUDIENCES` env, so dynamically-registered clients (like
   `mcp-remote`) still satisfy the MCP server's configured `audience: "mcp-server"`.
-- Caddy fronts both FeauxAuth and MCP on a single `https://localhost`, routing
-  `/mcp*` and `/.well-known/oauth-protected-resource` to MCP and everything else
-  to FeauxAuth.
+- Caddy fronts FeauxAuth, MCP, and gp-chat on a single `https://localhost`,
+  routing `/chat/*` to gp-chat, `/mcp*` and
+  `/.well-known/oauth-protected-resource` to MCP, and everything else to
+  FeauxAuth.
+- gp-chat forwards the active persona's JWT on every MCP call via
+  `TokenForwardingInterceptor` — the MCP server maps the JWT's `roles` claim
+  to a Greenplum user, so the same chat prompt produces different results
+  depending on who is logged in.
 - MCP-to-FeauxAuth JWKS fetch stays on the internal Docker network via
   `http://feauxauth:8080/.well-known/jwks.json`.
+
+## Further reading
+
+- [DEMO.md](DEMO.md) — step-by-step walkthrough for the basic demo
+- [DEMO-SECURITY.md](DEMO-SECURITY.md) — focused 20-minute security demo
+  (identity, policy, custom tools, audit trail)
