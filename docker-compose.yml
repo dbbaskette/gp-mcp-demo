@@ -77,7 +77,7 @@ services:
       GPUSER: gpadmin
       PGPASSWORD: "VMware1!"
       DATABASE: tpcds
-      FEAUXAUTH_URL: https://feauxauth:8443
+      FEAUXAUTH_URL: http://feauxauth:8080
       FEAUXAUTH_ADMIN_USER: admin
       FEAUXAUTH_ADMIN_PASS: feauxauth
     entrypoint: ["/bin/bash", "/setup-demo-users.sh"]
