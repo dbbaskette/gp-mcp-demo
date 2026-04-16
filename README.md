@@ -10,7 +10,7 @@ dataset behind a single HTTPS endpoint.
 - **Claude Desktop** — wire Claude directly to the MCP server via `mcp-remote`
 - **gp-chat** — browser-based chat UI (React + Spring Boot) with multi-persona
   split-pane comparison, a developer panel, and pluggable LLM backends
-  (Gemini, Claude, OpenAI)
+  (Gemini, Claude, OpenAI, and LM Studio for local inference)
 
 All services run in Docker with HTTPS termination via Caddy + mkcert.
 
@@ -71,17 +71,55 @@ Once the stack is running and demo identities exist, open
   so you can compare results side-by-side.
 - **DevPanel** (`⌘\`) — inspect decoded JWT claims, live audit events, and
   the MCP tool inventory for each persona.
-- **Model picker** — switch between Gemini, Claude, and OpenAI (only providers
-  with API keys in `gp-chat/.env` appear).
+- **Model picker** — switch between Gemini, Claude, OpenAI, and any LM Studio
+  model you have loaded locally. Only providers whose credentials are set in
+  `gp-chat/.env` appear in the picker; unconfigured providers are silently
+  dropped.
 
-gp-chat requires at least one LLM API key. Copy `gp-chat/.env.example` to
-`gp-chat/.env` and fill in whichever keys you have:
+### Configuring models
+
+gp-chat needs at least one working provider. Copy `gp-chat/.env.example` to
+`gp-chat/.env` and fill in whatever you have:
 
 ```bash
+# --- API keys (any combination; missing keys drop that provider) ---
 GEMINI_API_KEY=...
 ANTHROPIC_API_KEY=...
 OPENAI_API_KEY=...
+
+# --- Model selection (shown in the UI picker) ---
+# Change and restart gp-chat to swap models — no rebuild needed.
+OPENAI_MODEL=gpt-5-nano-2025-08-07
+# Note: gpt-5 family (gpt-5, gpt-5-mini, gpt-5-nano) only accepts temperature=1.
+OPENAI_TEMPERATURE=1
+
+ANTHROPIC_MODEL=claude-sonnet-4-6
+ANTHROPIC_TEMPERATURE=0.7
+
+GEMINI_MODEL=gemini-3-flash-preview
+GEMINI_TEMPERATURE=0.7
+
+# --- LM Studio (optional, OpenAI-compatible local inference) ---
+# Leave LMSTUDIO_BASE_URL blank to disable.
+LMSTUDIO_BASE_URL=http://host.docker.internal:1234/v1
+LMSTUDIO_API_KEY=lm-studio
+# Comma-separated; each entry appears as its own option in the UI picker.
+LMSTUDIO_MODEL=google/gemma-4-31b,qwen/qwen3.5-9b
+LMSTUDIO_TEMPERATURE=0.7
 ```
+
+Tips:
+
+- LM Studio runs on your host machine — start its OpenAI-compatible server
+  (default port 1234) and load the models you listed in `LMSTUDIO_MODEL`.
+  On Linux, `docker-compose.yml` maps `host.docker.internal` via `extra_hosts`;
+  macOS/Windows get it for free.
+- `gp-chat/.env` is git-ignored. Changes to model name/temperature only need
+  a container restart (`docker compose up -d gp-chat --force-recreate`),
+  not a rebuild.
+- Smaller or local models sometimes emit malformed markdown; gp-chat
+  post-processes tool-call schemas and markdown tables to keep output
+  rendering cleanly across all four providers.
 
 ## Create the demo identities
 
