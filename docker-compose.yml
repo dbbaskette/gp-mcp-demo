@@ -108,6 +108,10 @@ services:
       - ./gp-chat/.env
     volumes:
       - ./gp-chat/config/personas.yaml:/app/config/personas.yaml:ro
+    extra_hosts:
+      # Allow LMSTUDIO_BASE_URL=http://host.docker.internal:1234/v1 on Linux.
+      # macOS/Windows Docker Desktop already provide this; extra_hosts is a no-op there.
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
   caddy:

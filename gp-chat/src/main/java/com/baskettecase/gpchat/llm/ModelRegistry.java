@@ -5,6 +5,8 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
@@ -42,17 +44,27 @@ public class ModelRegistry {
     static class Cfg {
         @Bean
         Map<String, ProviderEntry> providerEntries(
-            @Autowired(required = false) OpenAiChatModel openAi,
+            @Autowired(required = false) @Qualifier("openAiChatModel") OpenAiChatModel openAi,
+            @Autowired(required = false) @Qualifier("lmStudioChatModel") OpenAiChatModel lmStudio,
             @Autowired(required = false) AnthropicChatModel anthropic,
-            @Autowired(required = false) GoogleGenAiChatModel googleGenAi
+            @Autowired(required = false) GoogleGenAiChatModel googleGenAi,
+            @Value("${gpchat.openai.model:gpt-5-nano-2025-08-07}") String openAiModel,
+            @Value("${gpchat.anthropic.model:claude-sonnet-4-6}") String anthropicModel,
+            @Value("${spring.ai.google.genai.chat.options.model:gemini-3.1-flash-lite-preview}") String googleModel,
+            @Value("${gpchat.lmstudio.model:local-model}") String lmStudioModel
         ) {
+            // LM Studio accepts a CSV list (LMSTUDIO_MODEL=model-a,model-b) so the picker
+            // can offer several local models. Each entry becomes a separate UI option; the
+            // ChatOrchestrator swaps models per-call via .options() on the shared bean.
+            List<String> lmStudioModels = Arrays.stream(lmStudioModel.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .toList();
             Map<String, ProviderEntry> m = new LinkedHashMap<>();
-            m.put("google", new ProviderEntry(googleGenAi,
-                List.of("gemini-3.1-flash-lite-preview", "gemini-2.5-pro-preview-05-06")));
-            m.put("openai", new ProviderEntry(openAi,
-                List.of("gpt-4.1-nano")));
-            m.put("anthropic", new ProviderEntry(anthropic,
-                List.of("claude-sonnet-4-6")));
+            m.put("google", new ProviderEntry(googleGenAi, List.of(googleModel)));
+            m.put("openai", new ProviderEntry(openAi, List.of(openAiModel)));
+            m.put("anthropic", new ProviderEntry(anthropic, List.of(anthropicModel)));
+            m.put("lmstudio", new ProviderEntry(lmStudio, lmStudioModels));
             return m;
         }
     }

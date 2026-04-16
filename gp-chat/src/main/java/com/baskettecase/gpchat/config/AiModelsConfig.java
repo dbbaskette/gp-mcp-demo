@@ -6,8 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
-import org.springframework.ai.google.genai.GoogleGenAiChatModel;
-import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
 import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
@@ -30,15 +28,51 @@ public class AiModelsConfig {
     @Bean
     OpenAiChatModel openAiChatModel(
             @Value("${spring.ai.openai.api-key:}") String apiKey,
+            @Value("${gpchat.openai.model:gpt-5-nano-2025-08-07}") String model,
+            @Value("${gpchat.openai.temperature:0.7}") Double temperature,
             ToolCallingManager toolCallingManager) {
         if (apiKey.isBlank() || "disabled".equalsIgnoreCase(apiKey)) {
             log.info("OpenAI API key not configured — skipping OpenAiChatModel bean");
             return null;
         }
+        log.info("Configuring OpenAI provider: model={}, temperature={}", model, temperature);
         var client = OpenAIOkHttpClient.builder().apiKey(apiKey).build();
         return OpenAiChatModel.builder()
                 .openAiClient(client)
-                .options(OpenAiChatOptions.builder().model("gpt-4o").build())
+                .options(OpenAiChatOptions.builder()
+                        .model(model)
+                        .temperature(temperature)
+                        .build())
+                .toolCallingManager(toolCallingManager)
+                .build();
+    }
+
+    @Bean
+    OpenAiChatModel lmStudioChatModel(
+            @Value("${gpchat.lmstudio.base-url:}") String baseUrl,
+            @Value("${gpchat.lmstudio.api-key:lm-studio}") String apiKey,
+            @Value("${gpchat.lmstudio.model:local-model}") String modelsCsv,
+            @Value("${gpchat.lmstudio.temperature:0.7}") Double temperature,
+            ToolCallingManager toolCallingManager) {
+        if (baseUrl.isBlank() || "disabled".equalsIgnoreCase(baseUrl)) {
+            log.info("LM Studio base URL not configured — skipping lmStudioChatModel bean");
+            return null;
+        }
+        // First entry in the CSV becomes the bean's baked-in default; ChatOrchestrator
+        // overrides it per-call via .options() when the user picks a different model.
+        String defaultModel = modelsCsv.split(",")[0].trim();
+        log.info("Configuring LM Studio provider: baseUrl={}, models={}, default={}, temperature={}",
+                baseUrl, modelsCsv, defaultModel, temperature);
+        var client = OpenAIOkHttpClient.builder()
+                .apiKey(apiKey)
+                .baseUrl(baseUrl)
+                .build();
+        return OpenAiChatModel.builder()
+                .openAiClient(client)
+                .options(OpenAiChatOptions.builder()
+                        .model(defaultModel)
+                        .temperature(temperature)
+                        .build())
                 .toolCallingManager(toolCallingManager)
                 .build();
     }
@@ -46,15 +80,21 @@ public class AiModelsConfig {
     @Bean
     AnthropicChatModel anthropicChatModel(
             @Value("${spring.ai.anthropic.api-key:}") String apiKey,
+            @Value("${gpchat.anthropic.model:claude-sonnet-4-6}") String model,
+            @Value("${gpchat.anthropic.temperature:0.7}") Double temperature,
             ToolCallingManager toolCallingManager) {
         if (apiKey.isBlank() || "disabled".equalsIgnoreCase(apiKey)) {
             log.info("Anthropic API key not configured — skipping AnthropicChatModel bean");
             return null;
         }
+        log.info("Configuring Anthropic provider: model={}, temperature={}", model, temperature);
         var client = AnthropicOkHttpClient.builder().apiKey(apiKey).build();
         return AnthropicChatModel.builder()
                 .anthropicClient(client)
-                .options(AnthropicChatOptions.builder().model("claude-sonnet-4-6").build())
+                .options(AnthropicChatOptions.builder()
+                        .model(model)
+                        .temperature(temperature)
+                        .build())
                 .toolCallingManager(toolCallingManager)
                 .build();
     }
