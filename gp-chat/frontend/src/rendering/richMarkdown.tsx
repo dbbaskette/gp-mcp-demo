@@ -14,7 +14,7 @@ export function RichMarkdown({ source }: { source: string }) {
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeRaw]}
       components={{
-        card: (props: any) => <RichCard title={props.title}>{props.children}</RichCard>,
+        card: (props: any) => <RichCard title={props.title} color={props.color}>{props.children}</RichCard>,
         statgrid: (props: any) => <StatGrid>{props.children}</StatGrid>,
         stat: (props: any) => <StatTile label={props.label} value={props.value} sub={props.sub} />,
         datatable: (props: any) => <StyledTable>{props.children}</StyledTable>,

@@ -39,17 +39,23 @@ html, body, #root { height: 100%; }
 /* ── Table styling ── */
 @layer components {
   table { @apply border-collapse w-full; }
+  thead tr {
+    background: linear-gradient(90deg, #1a2a4a, #2d3f6a);
+  }
   th {
-    @apply text-left text-[10px] font-mono uppercase tracking-widest text-gold-400/60 px-3 py-2.5;
-    background: rgba(212,168,83,0.04);
-    border-bottom: 1px solid rgba(212,168,83,0.12);
+    @apply text-left text-[10px] font-mono uppercase tracking-widest px-3 py-2.5;
+    color: #90cdf4;
+    letter-spacing: 0.8px;
+    border-bottom: 1px solid rgba(77,166,255,0.2);
   }
   td {
-    @apply px-3 py-2.5 font-mono text-sm text-signal-white/80;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+    @apply px-3 py-2.5 font-mono text-sm;
+    color: #e2e8f0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
   }
-  tbody tr:hover { background: rgba(212,168,83,0.03); }
-  tbody tr { transition: background 0.15s ease; }
+  tbody tr:nth-child(even) { background: rgba(26,32,44,0.8); }
+  tbody tr:nth-child(odd)  { background: rgba(23,25,35,0.6); }
+  tbody tr:hover { background: rgba(77,166,255,0.08); transition: background 0.15s ease; }
 }
 
 /* ── Animations ── */
