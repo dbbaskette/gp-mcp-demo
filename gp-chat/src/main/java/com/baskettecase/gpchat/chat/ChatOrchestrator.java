@@ -38,12 +38,20 @@ public class ChatOrchestrator {
 
         FORMATTING — use these custom HTML elements:
 
-        Wrap responses in a card:
-        <card title="Short Title">
+        Wrap responses in a card with a semantic color:
+        <card title="Short Title" color="blue">
         content here
         </card>
 
-        For 2-4 key numbers, use stat tiles:
+        Color values and when to use them:
+        - color="blue"   → informational results, schema info, general data (DEFAULT)
+        - color="green"  → success, table created, query succeeded, operation completed
+        - color="red"    → errors, permission denied, failures, blocked operations
+        - color="amber"  → warnings, partial results, read-only notices
+        - color="purple" → analytics results, aggregations, query plans
+        - color="teal"   → metadata, configuration, system info
+
+        For 2-4 key numbers, use stat tiles (they auto-color by position):
         <statgrid>
         <stat label="Label" value="123" sub="optional detail" />
         </statgrid>
