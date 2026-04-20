@@ -8,7 +8,7 @@ dataset behind a single HTTPS endpoint.
 **Two client options:**
 
 - **Claude Desktop** — wire Claude directly to the MCP server via `mcp-remote`
-- **gp-chat** — browser-based chat UI (React + Spring Boot) with multi-persona
+- **data-chat** — browser-based chat UI (React + Spring Boot) with multi-persona
   split-pane comparison, a developer panel, and pluggable LLM backends
   (Gemini, Claude, OpenAI, and LM Studio for local inference)
 
@@ -54,12 +54,12 @@ First start takes several minutes (Greenplum warm-up + TPC-DS load).
 | https://localhost/oauth/{authorize,token,register,...} | FeauxAuth endpoints |
 | https://localhost/mcp | MCP server (requires Bearer token) |
 | https://localhost/.well-known/oauth-protected-resource | MCP resource metadata |
-| https://localhost/chat/ | gp-chat web UI |
-| https://localhost/chat/ws/chat | gp-chat WebSocket endpoint |
-| https://localhost/chat/api/audit/stream | gp-chat audit SSE stream (DevPanel) |
+| https://localhost/chat/ | data-chat web UI |
+| https://localhost/chat/ws/chat | data-chat WebSocket endpoint |
+| https://localhost/chat/api/audit/stream | data-chat audit SSE stream (DevPanel) |
 | localhost:15432 | Greenplum (gpadmin / VMware1! / tpcds) |
 
-## Using gp-chat (browser UI)
+## Using data-chat (browser UI)
 
 Once the stack is running and demo identities exist, open
 **https://localhost/chat/** in your browser.
@@ -73,13 +73,13 @@ Once the stack is running and demo identities exist, open
   the MCP tool inventory for each persona.
 - **Model picker** — switch between Gemini, Claude, OpenAI, and any LM Studio
   model you have loaded locally. Only providers whose credentials are set in
-  `gp-chat/.env` appear in the picker; unconfigured providers are silently
+  `data-chat/.env` appear in the picker; unconfigured providers are silently
   dropped.
 
 ### Configuring models
 
-gp-chat needs at least one working provider. Copy `gp-chat/.env.example` to
-`gp-chat/.env` and fill in whatever you have:
+data-chat needs at least one working provider. Copy `data-chat/.env.example` to
+`data-chat/.env` and fill in whatever you have:
 
 ```bash
 # --- API keys (any combination; missing keys drop that provider) ---
@@ -88,7 +88,7 @@ ANTHROPIC_API_KEY=...
 OPENAI_API_KEY=...
 
 # --- Model selection (shown in the UI picker) ---
-# Change and restart gp-chat to swap models — no rebuild needed.
+# Change and restart data-chat to swap models — no rebuild needed.
 OPENAI_MODEL=gpt-5-nano-2025-08-07
 # Note: gpt-5 family (gpt-5, gpt-5-mini, gpt-5-nano) only accepts temperature=1.
 OPENAI_TEMPERATURE=1
@@ -114,10 +114,10 @@ Tips:
   (default port 1234) and load the models you listed in `LMSTUDIO_MODEL`.
   On Linux, `docker-compose.yml` maps `host.docker.internal` via `extra_hosts`;
   macOS/Windows get it for free.
-- `gp-chat/.env` is git-ignored. Changes to model name/temperature only need
-  a container restart (`docker compose up -d gp-chat --force-recreate`),
+- `data-chat/.env` is git-ignored. Changes to model name/temperature only need
+  a container restart (`docker compose up -d data-chat --force-recreate`),
   not a rebuild.
-- Smaller or local models sometimes emit malformed markdown; gp-chat
+- Smaller or local models sometimes emit malformed markdown; data-chat
   post-processes tool-call schemas and markdown tables to keep output
   rendering cleanly across all four providers.
 
@@ -172,11 +172,11 @@ do DDL.
 - Access tokens include `aud = [client_id, "mcp-server"]` via FeauxAuth's
   `FEAUXAUTH_EXTRA_AUDIENCES` env, so dynamically-registered clients (like
   `mcp-remote`) still satisfy the MCP server's configured `audience: "mcp-server"`.
-- Caddy fronts FeauxAuth, MCP, and gp-chat on a single `https://localhost`,
-  routing `/chat/*` to gp-chat, `/mcp*` and
+- Caddy fronts FeauxAuth, MCP, and data-chat on a single `https://localhost`,
+  routing `/chat/*` to data-chat, `/mcp*` and
   `/.well-known/oauth-protected-resource` to MCP, and everything else to
   FeauxAuth.
-- gp-chat forwards the active persona's JWT on every MCP call via
+- data-chat forwards the active persona's JWT on every MCP call via
   `TokenForwardingInterceptor` — the MCP server maps the JWT's `roles` claim
   to a Greenplum user, so the same chat prompt produces different results
   depending on who is logged in.

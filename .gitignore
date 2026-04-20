@@ -1,13 +1,16 @@
 .DS_Store
 
+# Claude Code agent workspace (worktrees, session state)
+.claude/
+
 # TLS certs generated locally via mkcert
 certs/*.pem
 
 # superpowers brainstorming scratch
 .superpowers/
 
-# gp-chat build / secrets
-gp-chat/.env
-gp-chat/target/
-gp-chat/frontend/node_modules/
-gp-chat/frontend/dist/
+# data-chat build / secrets
+data-chat/.env
+data-chat/target/
+data-chat/frontend/node_modules/
+data-chat/frontend/dist/

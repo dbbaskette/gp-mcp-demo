@@ -13,9 +13,9 @@ localhost {
         }
     }
 
-    # gp-chat SPA + API, reachable at /chat/* (backend sees /)
+    # data-chat SPA + API, reachable at /chat/* (backend sees /)
     handle_path /chat/* {
-        reverse_proxy gp-chat:8080
+        reverse_proxy data-chat:8080
     }
 
     # Everything else → FeauxAuth (admin UI, /oauth/*, OIDC discovery, JWKS)

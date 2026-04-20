@@ -97,17 +97,17 @@ services:
     command: ["/app/gp-mcp-server", "streamable-http", "--config-file=/app/config.yaml", "--readonly=false"]
     restart: unless-stopped
 
-  gp-chat:
-    build: ./gp-chat
+  data-chat:
+    build: ./data-chat
     depends_on:
       feauxauth:
         condition: service_started
       mcp:
         condition: service_started
     env_file:
-      - ./gp-chat/.env
+      - ./data-chat/.env
     volumes:
-      - ./gp-chat/config/personas.yaml:/app/config/personas.yaml:ro
+      - ./data-chat/config/personas.yaml:/app/config/personas.yaml:ro
     extra_hosts:
       # Allow LMSTUDIO_BASE_URL=http://host.docker.internal:1234/v1 on Linux.
       # macOS/Windows Docker Desktop already provide this; extra_hosts is a no-op there.
@@ -119,7 +119,7 @@ services:
     depends_on:
       - feauxauth
       - mcp
-      - gp-chat
+      - data-chat
     ports:
       - "443:443"
       - "80:80"

@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: data-chat
+  config:
+    import: optional:file:/app/config/personas.yaml
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:disabled}
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:disabled}
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY:}
+        chat:
+          options:
+            # Override via GEMINI_MODEL / GEMINI_TEMPERATURE env vars
+            model: ${GEMINI_MODEL:gemini-3.1-flash-lite-preview}
+            temperature: ${GEMINI_TEMPERATURE:0.7}
+    mcp:
+      client:
+        enabled: false
+
+# Provider-specific model + temperature. Each provider shows ONE model in the UI
+# picker. Change the env var and restart data-chat to swap models without a rebuild.
+datachat:
+  openai:
+    model: ${OPENAI_MODEL:gpt-5-nano-2025-08-07}
+    temperature: ${OPENAI_TEMPERATURE:0.7}
+  anthropic:
+    model: ${ANTHROPIC_MODEL:claude-sonnet-4-6}
+    temperature: ${ANTHROPIC_TEMPERATURE:0.7}
+  lmstudio:
+    # Empty/blank/"disabled" => provider not registered. Example: http://host.docker.internal:1234/v1
+    base-url: ${LMSTUDIO_BASE_URL:}
+    # LM Studio ignores the API key value but requires the header to be present
+    api-key: ${LMSTUDIO_API_KEY:lm-studio}
+    # Comma-separated list of model identifiers loaded in LM Studio (as shown in
+    # its Server tab). Each entry appears as its own option in the UI picker.
+    model: ${LMSTUDIO_MODEL:local-model}
+    temperature: ${LMSTUDIO_TEMPERATURE:0.7}
+
+server:
+  port: 8080
+  forward-headers-strategy: native
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+
+logging:
+  level:
+    com.baskettecase.datachat: DEBUG
