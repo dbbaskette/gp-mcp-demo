@@ -13,7 +13,9 @@ localhost {
         }
     }
 
-    # data-chat SPA + API, reachable at /chat/* (backend sees /)
+    # data-chat SPA + API, reachable at /chat/* (backend sees /).
+    # Redirect bare /chat to /chat/ so the SPA loads without a trailing-slash 404.
+    redir /chat /chat/ 308
     handle_path /chat/* {
         reverse_proxy data-chat:8080
     }

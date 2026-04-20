@@ -4,37 +4,71 @@ import { openAuditStream } from '../api/audit';
 
 type DevEvent = Record<string, unknown>;
 
-const BADGE: Record<string, { bg: string; text: string }> = {
-  tool: { bg: 'bg-signal-amber/15 border-signal-amber/25', text: 'text-signal-amber' },
-  llm:  { bg: 'bg-gold-500/10 border-gold-500/20',        text: 'text-gold-400' },
-  mcp:  { bg: 'bg-signal-cyan/15 border-signal-cyan/25',   text: 'text-signal-cyan' },
+/**
+ * DevPanel — a scrolling log in the left-column style of a tech-journal
+ * debug pane: hairline headers, monospaced everything, cobalt/forest/cinnabar
+ * status hues. Includes a cobalt scanline in the empty state per the
+ * critique's "empty states as product moments" recommendation.
+ */
+
+const CATEGORY_COLORS: Record<string, string> = {
+  tool: '#9e6a15', // saffron
+  llm:  '#1e3a8a', // cobalt
+  mcp:  '#1d5552', // teal
+};
+
+const CATEGORY_BG: Record<string, string> = {
+  tool: 'rgba(158,106,21,0.10)',
+  llm:  'rgba(30,58,138,0.10)',
+  mcp:  'rgba(29,85,82,0.10)',
 };
 
 function Badge({ category }: { category: string }) {
-  const s = BADGE[category] ?? { bg: 'bg-ink-700 border-signal-white/10', text: 'text-signal-white/50' };
-  return <span className={`${s.bg} ${s.text} border text-[9px] px-1.5 py-0.5 rounded font-mono uppercase tracking-wider font-semibold`}>{category}</span>;
+  const color = CATEGORY_COLORS[category] ?? '#3a3632';
+  const bg = CATEGORY_BG[category] ?? 'rgba(20,19,17,0.08)';
+  return (
+    <span
+      className="font-mono text-[9px] px-1.5 py-0.5 uppercase tracking-[0.14em] font-semibold"
+      style={{ color, background: bg }}
+    >
+      {category}
+    </span>
+  );
+}
+
+function phaseColor(phase: string) {
+  if (phase === 'error') return '#b83a26';
+  if (phase === 'done') return '#1f4a32';
+  return '#1e3a8a';
 }
 
 function LogEntry({ ev }: { ev: DevEvent }) {
   const cat = (ev.category as string) ?? 'tool';
-  const ts = ev.at ? new Date(ev.at as string).toLocaleTimeString('en', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+  const ts = ev.at
+    ? new Date(ev.at as string).toLocaleTimeString('en', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : '';
 
   if (cat === 'llm') {
     const phase = ev.phase as string;
-    const color = phase === 'error' ? 'text-signal-red' : phase === 'done' ? 'text-gp-green' : 'text-gold-400';
     return (
-      <div className="mb-2 pb-2 border-b border-gold-500/5 animate-fade-in">
-        <div className="flex items-center gap-1.5">
+      <div className="mb-2 pb-2 border-b border-ink/12 animate-fade-in">
+        <div className="flex items-center gap-2">
           <Badge category="llm" />
-          <span className="text-signal-cyan/70 font-mono text-[11px]">{String(ev.personaId)}</span>
-          <span className={`${color} font-mono text-[11px] font-medium`}>{phase}</span>
-          <span className="text-signal-white/20 font-mono text-[10px] ml-auto">{ts}</span>
+          <span className="text-ink-2 font-mono text-[11px]">{String(ev.personaId)}</span>
+          <span className="font-mono text-[11px] font-semibold" style={{ color: phaseColor(phase) }}>
+            {phase}
+          </span>
+          <span className="text-ink-3 font-mono text-[10px] ml-auto">{ts}</span>
         </div>
-        <div className="ml-6 mt-0.5 font-mono text-[10px] text-signal-white/40">
+        <div className="ml-1 mt-1 font-mono text-[10px] text-ink-2">
           {String(ev.provider)}/{String(ev.model)}
-          {(ev.durationMs as number) > 0 && <span className="text-gold-400/60 ml-2">{String(ev.durationMs)}ms</span>}
+          {(ev.durationMs as number) > 0 && (
+            <span className="text-cobalt ml-3">{String(ev.durationMs)}ms</span>
+          )}
         </div>
-        {ev.detail ? <div className="ml-6 mt-0.5 font-mono text-[10px] text-signal-white/25 truncate">{String(ev.detail)}</div> : null}
+        {ev.detail ? (
+          <div className="ml-1 mt-0.5 font-mono text-[10px] text-ink-3 truncate">{String(ev.detail)}</div>
+        ) : null}
       </div>
     );
   }
@@ -43,30 +77,40 @@ function LogEntry({ ev }: { ev: DevEvent }) {
     const action = ev.action as string;
     const detail = ev.detail ? String(ev.detail) : '';
     const tools = ev.tools as string[] | undefined;
-    const color = action === 'error' || action === 'call_error' ? 'text-signal-red' : action === 'connected' ? 'text-gp-green' : 'text-signal-cyan';
+    const actionColor =
+      action === 'error' || action === 'call_error' ? '#b83a26'
+      : action === 'connected' ? '#1f4a32'
+      : '#1d5552';
     return (
-      <div className="mb-2 pb-2 border-b border-gold-500/5 animate-fade-in">
-        <div className="flex items-center gap-1.5">
+      <div className="mb-2 pb-2 border-b border-ink/12 animate-fade-in">
+        <div className="flex items-center gap-2">
           <Badge category="mcp" />
-          <span className="text-signal-cyan/70 font-mono text-[11px]">{String(ev.personaId)}</span>
-          <span className={`${color} font-mono text-[11px] font-medium`}>{action}</span>
-          <span className="text-signal-white/20 font-mono text-[10px] ml-auto">{ts}</span>
+          <span className="text-ink-2 font-mono text-[11px]">{String(ev.personaId)}</span>
+          <span className="font-mono text-[11px] font-semibold" style={{ color: actionColor }}>
+            {action}
+          </span>
+          <span className="text-ink-3 font-mono text-[10px] ml-auto">{ts}</span>
         </div>
-        {detail && <div className="ml-6 mt-0.5 font-mono text-[10px] text-signal-white/40">{detail}</div>}
-        {tools && <div className="ml-6 mt-0.5 font-mono text-[9px] text-signal-white/20">{tools.join(' · ')}</div>}
+        {detail && <div className="ml-1 mt-1 font-mono text-[10px] text-ink-2">{detail}</div>}
+        {tools && <div className="ml-1 mt-0.5 font-mono text-[10px] text-ink-3">{tools.join(' · ')}</div>}
       </div>
     );
   }
 
   return (
-    <div className="mb-2 pb-2 border-b border-gold-500/5 animate-fade-in">
-      <div className="flex items-center gap-1.5">
+    <div className="mb-2 pb-2 border-b border-ink/12 animate-fade-in">
+      <div className="flex items-center gap-2">
         <Badge category="tool" />
-        <span className="text-signal-cyan/70 font-mono text-[11px]">{String(ev.personaId)}</span>
-        <span className="text-gold-300 font-mono text-[11px] font-medium">{String(ev.tool)}</span>
-        <span className={`font-mono text-[10px] ${ev.status === 'denied' ? 'text-signal-red' : 'text-signal-white/30'}`}>{String(ev.status)}</span>
-        <span className="text-gold-500/40 font-mono text-[10px]">{String(ev.durationMs)}ms</span>
-        <span className="text-signal-white/20 font-mono text-[10px] ml-auto">{ts}</span>
+        <span className="text-ink-2 font-mono text-[11px]">{String(ev.personaId)}</span>
+        <span className="text-ink font-mono text-[11px] font-semibold">{String(ev.tool)}</span>
+        <span
+          className="font-mono text-[10px]"
+          style={{ color: ev.status === 'denied' ? '#b83a26' : ev.status === 'success' ? '#1f4a32' : '#3a3632' }}
+        >
+          {String(ev.status)}
+        </span>
+        <span className="text-cobalt font-mono text-[10px]">{String(ev.durationMs)}ms</span>
+        <span className="text-ink-3 font-mono text-[10px] ml-auto">{ts}</span>
       </div>
     </div>
   );
@@ -95,65 +139,66 @@ export default function DevPanel({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <aside className="h-full w-[480px] flex-shrink-0 bg-ink-900 border-l border-gold-500/10 overflow-hidden flex flex-col shadow-2xl shadow-ink-950/80 animate-slide-left">
+    <aside className="h-full w-[440px] flex-shrink-0 bg-paper-2 border-l-2 border-ink/30 overflow-hidden flex flex-col animate-slide-left">
       {/* Header */}
-      <div className="h-14 px-4 flex items-center justify-between border-b border-gold-500/10 bg-ink-900/90 backdrop-blur-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded bg-gold-500/10 flex items-center justify-center">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" className="text-gold-500/60">
-              <rect width="4" height="4" rx="0.5"/>
-              <rect x="6" width="4" height="4" rx="0.5" opacity="0.5"/>
-              <rect y="6" width="4" height="4" rx="0.5" opacity="0.5"/>
-              <rect x="6" y="6" width="4" height="4" rx="0.5" opacity="0.3"/>
-            </svg>
-          </div>
-          <span className="font-mono text-xs uppercase tracking-[0.15em] text-gold-400">DevPanel</span>
+      <div className="px-4 py-3 flex items-center justify-between border-b border-ink/30">
+        <div className="flex items-baseline gap-2">
+          <span className="font-display italic text-display-sm text-ink leading-none">Dev</span>
+          <span className="font-mono text-label-xs uppercase text-ink-3">panel</span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] font-mono text-signal-white/20">⌘\</span>
-          <button className="text-xs font-mono text-signal-white/30 hover:text-signal-white/60 transition-colors" onClick={onClose}>Close</button>
+        <div className="flex items-center gap-2">
+          <span className="kbd">⌘\</span>
+          <button
+            className="font-mono text-label-sm uppercase text-ink-2 hover:text-ink transition-colors"
+            onClick={onClose}
+          >
+            Close
+          </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gold-500/8">
+      <div className="flex border-b border-ink/15">
         {(['logs', 'claims', 'tools'] as const).map(t => (
           <button
             key={t}
-            className={`flex-1 py-2.5 text-[11px] font-mono uppercase tracking-[0.15em] transition-all ${
-              tab === t
-                ? 'text-gold-400 border-b-2 border-gold-500/40 bg-gold-500/5'
-                : 'text-signal-white/25 hover:text-signal-white/40'
-            }`}
+            className={`relative flex-1 py-2.5 font-mono text-label-sm uppercase transition-colors
+              ${tab === t ? 'text-ink' : 'text-ink-3 hover:text-ink'}`}
             onClick={() => setTab(t)}
-          >{t}</button>
+          >
+            {t}
+            {tab === t && <span className="absolute left-3 right-3 -bottom-px h-[2px] bg-cobalt" />}
+          </button>
         ))}
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-3 text-xs font-mono" ref={logRef}>
+      <div className="flex-1 overflow-auto p-4 text-xs font-mono" ref={logRef}>
         {tab === 'logs' && (
           <>
-            <div className="flex gap-1 mb-3 sticky top-0 bg-ink-900 py-1.5 z-10">
+            <div className="flex gap-1 mb-3 sticky top-0 bg-paper-2 py-1 z-10">
               {['all', 'tool', 'llm', 'mcp'].map(f => (
-                <button key={f}
-                  className={`px-2.5 py-1 rounded text-[10px] font-mono uppercase tracking-wider transition-all ${
-                    filter === f
-                      ? 'bg-gold-500/15 text-gold-400 border border-gold-500/20'
-                      : 'bg-ink-800 text-signal-white/25 border border-transparent hover:text-signal-white/40'
-                  }`}
-                  onClick={() => setFilter(f)}>{f}</button>
+                <button
+                  key={f}
+                  className={`px-2 py-1 font-mono text-label-xs uppercase transition-colors border
+                    ${filter === f
+                      ? 'bg-ink text-paper border-ink'
+                      : 'bg-transparent text-ink-2 border-ink/20 hover:border-ink/60 hover:text-ink'}`}
+                  onClick={() => setFilter(f)}
+                >
+                  {f}
+                </button>
               ))}
               <button
-                className="px-2.5 py-1 rounded text-[10px] font-mono uppercase tracking-wider bg-ink-800 text-signal-white/20 hover:text-signal-white/40 transition-colors ml-auto border border-transparent"
+                className="ml-auto px-2 py-1 font-mono text-label-xs uppercase text-ink-3 hover:text-ink transition-colors"
                 onClick={() => setEvents([])}
-              >Clear</button>
+              >
+                Clear
+              </button>
             </div>
+
             {filtered.length === 0 && (
-              <div className="text-center mt-12 animate-fade-in">
-                <div className="text-signal-white/15 font-mono text-xs">No events</div>
-                <div className="text-signal-white/10 font-mono text-[10px] mt-1">Send a message to see activity</div>
-              </div>
+              <EmptyScan label="No events" sub="Send a message to see tool calls, MCP handshakes, and model traffic." />
             )}
             {filtered.map((ev, i) => <LogEntry key={i} ev={ev} />)}
           </>
@@ -161,11 +206,11 @@ export default function DevPanel({ onClose }: { onClose: () => void }) {
 
         {tab === 'claims' && (
           Object.entries(slots).filter(([, s]) => s.info?.loggedIn).length === 0
-            ? <div className="text-center mt-12 text-signal-white/15 font-mono text-xs animate-fade-in">No authenticated sessions</div>
+            ? <EmptyScan label="No sessions" sub="JWT claims appear here once a persona authenticates." />
             : Object.entries(slots).filter(([, s]) => s.info?.loggedIn).map(([id, s]) => (
               <div key={id} className="mb-4 animate-fade-in">
-                <div className="text-signal-cyan/70 font-mono text-[11px] uppercase tracking-wider mb-1.5">{id}</div>
-                <pre className="bg-ink-950 border border-gold-500/8 rounded-lg p-3 overflow-auto text-[10px] text-signal-white/50 leading-relaxed">
+                <div className="font-mono text-label-sm uppercase text-cobalt mb-1.5">{id}</div>
+                <pre className="bg-paper-3 border-l-2 border-cobalt p-3 overflow-auto text-[10px] text-ink leading-relaxed">
                   {JSON.stringify(s.info?.claims, null, 2)}
                 </pre>
               </div>
@@ -174,18 +219,15 @@ export default function DevPanel({ onClose }: { onClose: () => void }) {
 
         {tab === 'tools' && (
           Object.keys(mcpTools).length === 0
-            ? <div className="text-center mt-12 animate-fade-in">
-                <div className="text-signal-white/15 font-mono text-xs">No tools discovered</div>
-                <div className="text-signal-white/10 font-mono text-[10px] mt-1">Tool inventory appears after a chat triggers MCP</div>
-              </div>
+            ? <EmptyScan label="No tools discovered" sub="Inventory appears after a chat triggers an MCP handshake." />
             : Object.entries(mcpTools).map(([pid, tools]) => (
               <div key={pid} className="mb-4 animate-fade-in">
-                <div className="text-signal-cyan/70 font-mono text-[11px] uppercase tracking-wider mb-2">{pid}</div>
-                <div className="bg-ink-950 border border-gold-500/8 rounded-lg p-3 space-y-1">
+                <div className="font-mono text-label-sm uppercase text-cobalt mb-1.5">{pid}</div>
+                <div className="bg-paper-3 border-l-2 border-cobalt p-3 space-y-1">
                   {tools.map(t => (
                     <div key={t} className="flex items-center gap-2">
-                      <span className="w-1 h-1 rounded-full bg-gp-green/50" />
-                      <span className="text-gold-300/70 text-[11px]">{t}</span>
+                      <span className="w-1 h-1 bg-cobalt" />
+                      <span className="text-ink text-[11px]">{t}</span>
                     </div>
                   ))}
                 </div>
@@ -195,9 +237,31 @@ export default function DevPanel({ onClose }: { onClose: () => void }) {
       </div>
 
       {/* Footer */}
-      <div className="h-8 px-4 flex items-center border-t border-gold-500/8 bg-ink-900/50">
-        <span className="text-[10px] font-mono text-signal-white/15">{events.length} events captured</span>
+      <div className="px-4 py-2 border-t border-ink/15 bg-paper-2/80 flex items-center justify-between">
+        <span className="font-mono text-label-xs uppercase text-ink-3">
+          {events.length} events captured
+        </span>
       </div>
     </aside>
+  );
+}
+
+/**
+ * Empty-state with a slow cobalt scanline traveling down the field —
+ * signals "listening, nothing to show yet" without being twee.
+ */
+function EmptyScan({ label, sub }: { label: string; sub: string }) {
+  return (
+    <div className="relative h-48 border border-ink/15 overflow-hidden flex flex-col items-center justify-center text-center px-6 animate-fade-in">
+      <div
+        className="absolute left-0 right-0 h-6 pointer-events-none"
+        style={{
+          background: 'linear-gradient(180deg, transparent, rgba(30,58,138,0.16), transparent)',
+          animation: 'scan 2.8s ease-in-out infinite',
+        }}
+      />
+      <div className="font-display italic text-body-lg text-ink">{label}</div>
+      <div className="mt-1 font-body text-label-sm text-ink-3 uppercase tracking-wider">{sub}</div>
+    </div>
   );
 }

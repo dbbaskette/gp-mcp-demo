@@ -3,6 +3,7 @@ import Shell from './components/Shell';
 import PersonaPicker from './components/PersonaPicker';
 import ChatSurface from './components/ChatSurface';
 import DevPanel from './components/DevPanel';
+import EmptyPersonas from './components/EmptyPersonas';
 import { listPersonas, getPersona, loginUrl } from './api/personas';
 import { openSocket, type Outbound } from './api/chatSocket';
 import { usePersonas } from './state/personaStore';
@@ -34,7 +35,6 @@ export default function App() {
   useEffect(() => {
     const handleEvent = (ev: Outbound) => {
       onEvent(ev);
-      // Auto-open login popup when auth is required
       if (ev.type === 'auth_required' && ev.personaId) {
         const w = 480, h = 640;
         const left = window.screenX + (window.outerWidth - w) / 2;
@@ -60,77 +60,95 @@ export default function App() {
 
   return (
     <div className="h-full flex">
-      <Shell right={<>
-        {/* Demo toggle */}
-        <button onClick={() => setDemoMode(d => !d)} className="flex items-center gap-2 cursor-pointer group">
-          <div className={`relative w-8 h-4 rounded-full transition-colors duration-200 ${demoMode ? 'bg-gp-green/30' : 'bg-ink-700'}`}>
-            <div className="absolute top-0.5 w-3 h-3 rounded-full transition-all duration-200"
-                 style={{ left: demoMode ? '18px' : '2px', background: demoMode ? '#2ecc71' : 'rgba(232,228,221,0.3)' }} />
-          </div>
-          <span className="text-xs font-mono uppercase tracking-wider text-signal-white/40 group-hover:text-signal-white/60 transition-colors">
-            Compare
-          </span>
-        </button>
+      <Shell right={<HeaderControls
+        demoMode={demoMode} setDemoMode={setDemoMode}
+        active={active} setActive={setActive}
+        demoSelection={demoSelection} setDemoSelection={setDemoSelection}
+        personas={personas}
+        devOpen={devOpen} setDevOpen={setDevOpen}
+      />}>
+        {demoMode
+          ? (demoSelection.length >= 2
+              ? <ChatSurface personaIds={demoSelection} model={model} setModel={setModel} />
+              : <EmptyPersonas chosen={demoSelection.length} />)
+          : (active ? <ChatSurface personaIds={[active]} model={model} setModel={setModel} /> : null)}
+      </Shell>
+      {devOpen && <DevPanel onClose={() => setDevOpen(false)} />}
+    </div>
+  );
+}
 
-        {/* Divider */}
-        <div className="w-px h-5 bg-gold-500/10" />
+/**
+ * Header-right cluster. Two interaction surfaces (toggle + kbd-button),
+ * distinct shapes — not three competing pill styles.
+ */
+function HeaderControls({
+  demoMode, setDemoMode, active, setActive, demoSelection, setDemoSelection,
+  personas, devOpen, setDevOpen,
+}: {
+  demoMode: boolean; setDemoMode: (v: boolean | ((d: boolean) => boolean)) => void;
+  active: string; setActive: (v: string) => void;
+  demoSelection: string[]; setDemoSelection: (fn: (s: string[]) => string[]) => void;
+  personas: { id: string; label: string }[];
+  devOpen: boolean; setDevOpen: (fn: (o: boolean) => boolean) => void;
+}) {
+  return (
+    <>
+      {/* Compare toggle — cobalt rail when on */}
+      <button
+        onClick={() => setDemoMode(d => !d)}
+        className="flex items-center gap-2 group"
+        aria-pressed={demoMode}
+      >
+        <span className={`relative w-9 h-4 transition-colors duration-200 ${demoMode ? 'bg-cobalt' : 'bg-ink/15'}`}>
+          <span
+            className="absolute top-0.5 w-3 h-3 bg-paper transition-all duration-200"
+            style={{ left: demoMode ? '22px' : '2px' }}
+          />
+        </span>
+        <span className="font-mono text-label-sm uppercase text-ink-2 group-hover:text-ink">
+          Compare
+        </span>
+      </button>
 
-        {/* Persona selection */}
-        {!demoMode && <PersonaPicker value={active} onChange={setActive} />}
-        {demoMode && (
-          <div className="flex gap-1.5">
+      <span className="hairline-rule w-px h-5" />
+
+      {!demoMode
+        ? <PersonaPicker value={active} onChange={setActive} />
+        : (
+          <div className="flex gap-1">
             {personas.map(p => {
               const sel = demoSelection.includes(p.id);
               return (
                 <button key={p.id}
                   onClick={() => setDemoSelection(s => sel ? s.filter(x => x !== p.id) : [...s, p.id])}
-                  className={`px-3 py-1.5 rounded-md text-xs font-mono uppercase tracking-wider transition-all duration-200 ${
-                    sel
-                      ? 'bg-gp-green/15 text-gp-green border border-gp-green/30'
-                      : 'text-signal-white/40 border border-transparent hover:text-signal-white/60 hover:border-gold-500/10'
-                  }`}>
+                  className={`px-3 py-1.5 font-mono text-label-sm uppercase transition-colors border
+                    ${sel
+                      ? 'bg-cobalt text-paper border-cobalt'
+                      : 'bg-transparent text-ink-2 border-ink/30 hover:text-ink hover:border-ink/60'}`}
+                >
                   {p.label}
                 </button>
               );
             })}
           </div>
-        )}
+        )
+      }
 
-        {/* Divider */}
-        <div className="w-px h-5 bg-gold-500/10" />
+      <span className="hairline-rule w-px h-5" />
 
-        {/* DevPanel toggle */}
-        <button
-          onClick={() => setDevOpen(o => !o)}
-          className={`px-2.5 py-1.5 rounded-md text-xs font-mono transition-all duration-200 ${
-            devOpen
-              ? 'bg-gold-500/15 text-gold-400 border border-gold-500/30'
-              : 'text-signal-white/30 hover:text-signal-white/50 border border-transparent hover:border-gold-500/10'
-          }`}
-        >
-          <span className="flex items-center gap-1.5">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-              <rect x="1" y="1" width="4" height="4" rx="0.5" opacity="0.6"/>
-              <rect x="7" y="1" width="4" height="4" rx="0.5" opacity="0.4"/>
-              <rect x="1" y="7" width="4" height="4" rx="0.5" opacity="0.4"/>
-              <rect x="7" y="7" width="4" height="4" rx="0.5" opacity="0.8"/>
-            </svg>
-            Dev
-          </span>
-        </button>
-      </>}>
-        {demoMode
-          ? (demoSelection.length > 0
-            ? <ChatSurface personaIds={demoSelection} model={model} setModel={setModel} />
-            : <div className="h-full flex items-center justify-center">
-                <div className="text-center animate-fade-in">
-                  <div className="font-display text-2xl text-gold-500/30 mb-2">Select Personas</div>
-                  <div className="text-sm text-signal-white/30 font-body">Choose two or more personas above to compare their access levels</div>
-                </div>
-              </div>)
-          : (active ? <ChatSurface personaIds={[active]} model={model} setModel={setModel} /> : null)}
-      </Shell>
-      {devOpen && <DevPanel onClose={() => setDevOpen(false)} />}
-    </div>
+      {/* Dev toggle with visible kbd affordance */}
+      <button
+        onClick={() => setDevOpen(o => !o)}
+        className={`flex items-center gap-2 px-3 py-1.5 font-mono text-label-sm uppercase transition-colors border
+          ${devOpen
+            ? 'bg-ink text-paper border-ink'
+            : 'bg-transparent text-ink-2 border-ink/30 hover:text-ink hover:border-ink/60'}`}
+        aria-pressed={devOpen}
+      >
+        <span>Dev</span>
+        <span className={`kbd ${devOpen ? '!bg-paper/20 !border-paper/40 !text-paper' : ''}`}>⌘\</span>
+      </button>
+    </>
   );
 }

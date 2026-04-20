@@ -1,27 +1,33 @@
 import { ReactNode } from 'react';
 
+/**
+ * Top-level app chrome. Wordmark-led header in the editorial-press style:
+ * Fraunces italic for the name, a hairline rule below, a small Instrument Sans
+ * tagline — reads as a publication masthead rather than an app toolbar.
+ */
 export default function Shell({ right, children }: { right?: ReactNode; children: ReactNode }) {
   return (
-    <div className="h-full flex-1 min-w-0 flex flex-col bg-ink-950 bg-grid-fine">
-      {/* ── Header ── */}
-      <header className="h-14 px-5 flex items-center justify-between border-b border-gold-500/10 bg-ink-900/80 backdrop-blur-sm relative z-10">
-        <div className="flex items-center gap-3">
-          {/* Greenplum diamond icon */}
-          <div className="w-8 h-8 rounded-md bg-gradient-to-br from-gp-green to-gp-emerald flex items-center justify-center shadow-lg shadow-gp-green/20">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 1L14.5 8L8 15L1.5 8L8 1Z" fill="white" fillOpacity="0.9"/>
-            </svg>
+    <div className="h-full flex-1 min-w-0 flex flex-col bg-paper paper-tex">
+      {/* ── Masthead ── */}
+      <header className="relative px-6 pt-5 pb-3">
+        <div className="flex items-end justify-between gap-6">
+          <div className="flex items-baseline gap-4">
+            <h1 className="font-display text-display-sm text-ink italic leading-none">
+              Data-<span className="not-italic font-[500]">Chat</span>
+            </h1>
+            <span className="hidden sm:inline font-body text-label-sm uppercase text-ink-3">
+              a database conversation
+            </span>
           </div>
-          <div>
-            <div className="font-display text-lg text-gold-300 leading-none">Data-Chat</div>
-            <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-gold-500/50 mt-0.5">Greenplum Operations</div>
-          </div>
+          <div className="flex items-center gap-3">{right}</div>
         </div>
-        <div className="flex items-center gap-3">{right}</div>
+        {/* double rule — characteristically editorial */}
+        <div className="absolute left-6 right-6 bottom-1.5 hairline-strong h-px" />
+        <div className="absolute left-6 right-6 -bottom-0 hairline h-px" />
       </header>
 
       {/* ── Main ── */}
-      <main className="flex-1 overflow-hidden relative">{children}</main>
+      <main className="flex-1 min-h-0 relative">{children}</main>
     </div>
   );
 }

@@ -2,16 +2,18 @@ import { usePersonas } from '../state/personaStore';
 import { loginUrl } from '../api/personas';
 import MessageList from './MessageList';
 
-const PERSONA_COLORS: Record<string, string> = {
-  viewer:  'from-signal-cyan/20 to-signal-cyan/5 border-signal-cyan/20',
-  analyst: 'from-gold-500/20 to-gold-500/5 border-gold-500/20',
-  dba:     'from-purple-500/20 to-purple-500/5 border-purple-500/20',
-};
-
-const PERSONA_DOTS: Record<string, string> = {
-  viewer:  'bg-signal-cyan',
-  analyst: 'bg-gold-500',
-  dba:     'bg-purple-500',
+/**
+ * Persona-scoped conversation pane. One per persona in solo mode; N in
+ * Compare mode. The pane header reads as a periodical's section rubric:
+ * persona name on the left, connection state on the right, hairline below.
+ *
+ * Personas are differentiated by an accent *hue* (not by saturation), so the
+ * single-color editorial system stays dominant while still being glanceable.
+ */
+const PERSONA_ACCENT: Record<string, string> = {
+  viewer:  '#1d5552', // teal
+  analyst: '#1e3a8a', // cobalt (our primary — analyst is "default" persona)
+  dba:     '#5b2b7a', // plum
 };
 
 export default function ConversationPane({ personaId }: { personaId: string }) {
@@ -19,31 +21,28 @@ export default function ConversationPane({ personaId }: { personaId: string }) {
   const persona = usePersonas(s => s.personas.find(p => p.id === personaId));
   const info = slot?.info;
   const loggedIn = info?.loggedIn;
-
-  const colorClass = PERSONA_COLORS[personaId] ?? 'from-gold-500/20 to-gold-500/5 border-gold-500/20';
-  const dotClass = PERSONA_DOTS[personaId] ?? 'bg-gold-500';
+  const accent = PERSONA_ACCENT[personaId] ?? '#1e3a8a';
 
   if (!loggedIn) {
     return (
       <div className="h-full flex flex-col">
-        <div className="px-4 py-3 border-b border-gold-500/8 bg-ink-900/30">
-          <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${dotClass} opacity-30`} />
-            <span className="text-xs font-mono uppercase tracking-wider text-signal-white/40">{persona?.label ?? personaId}</span>
-            <span className="text-[10px] font-mono text-signal-white/20 ml-auto">offline</span>
-          </div>
-        </div>
+        <PaneHeader persona={persona?.label ?? personaId} accent={accent} state="offline" />
         <div className="flex-1 flex items-center justify-center animate-fade-in">
-          <div className="text-center">
-            <div className={`w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br ${colorClass} border flex items-center justify-center`}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-signal-white/40">
-                <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13.8 12H3"/>
+          <div className="text-center max-w-xs px-6">
+            <div
+              className="w-12 h-12 mx-auto mb-5 border border-ink/30 flex items-center justify-center"
+              style={{ borderLeftColor: accent, borderLeftWidth: 3 }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-ink-2">
+                <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13.8 12H3" />
               </svg>
             </div>
-            <div className="text-sm text-signal-white/30 mb-4 font-body">{persona?.description ?? 'Authenticate to continue'}</div>
+            <p className="font-body text-body text-ink-2 mb-6 leading-relaxed">
+              {persona?.description ?? 'Authenticate to continue.'}
+            </p>
             <button
               onClick={() => openLogin(personaId)}
-              className={`bg-gradient-to-br ${colorClass} border rounded-lg px-5 py-2.5 text-sm font-mono uppercase tracking-wider text-signal-white/80 hover:text-signal-white transition-all duration-200 hover:shadow-lg`}
+              className="font-mono text-label-sm uppercase px-4 py-2 border border-ink text-ink hover:bg-ink hover:text-paper transition-colors"
             >
               Authenticate
             </button>
@@ -55,16 +54,29 @@ export default function ConversationPane({ personaId }: { personaId: string }) {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-4 py-3 border-b border-gold-500/8 bg-ink-900/30">
-        <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${dotClass} animate-pulse-glow`} />
-          <span className="text-xs font-mono uppercase tracking-wider text-signal-white/60">{persona?.label ?? personaId}</span>
-          <span className="text-[10px] font-mono text-gp-green/60 ml-auto">connected</span>
+      <PaneHeader persona={persona?.label ?? personaId} accent={accent} state="connected" />
+      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+        <div className="mx-auto max-w-[68ch]">
+          <MessageList items={slot?.messages ?? []} />
         </div>
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto p-5">
-        <MessageList items={slot?.messages ?? []} />
-      </div>
+    </div>
+  );
+}
+
+function PaneHeader({ persona, accent, state }: { persona: string; accent: string; state: 'connected' | 'offline' }) {
+  return (
+    <div className="px-6 py-3 border-b border-ink/15 flex items-baseline gap-3">
+      <span
+        className="w-1.5 h-1.5 rounded-full"
+        style={{ background: state === 'connected' ? accent : 'rgba(20,19,17,0.25)' }}
+      />
+      <span className="font-mono text-label-sm uppercase" style={{ color: state === 'connected' ? accent : '#6b655c' }}>
+        {persona}
+      </span>
+      <span className="font-mono text-label-xs uppercase text-ink-3 ml-auto">
+        {state}
+      </span>
     </div>
   );
 }
