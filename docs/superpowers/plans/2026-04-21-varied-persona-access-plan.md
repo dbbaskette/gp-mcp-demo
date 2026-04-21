@@ -102,7 +102,11 @@ sleep 3
 docker compose logs --tail=60 mcp | grep -iE 'policy|masking'
 ```
 
-**Expected:** log lines along the lines of `Loaded policy from /app/policy.yaml` and `Loaded masking from /app/masking.yaml` (or role-scoped variants). NO errors about `unknown field`, `invalid default_method`, `unsupported method`, `masking file not found`.
+**Expected:** no errors about `unknown field`, `invalid default_method`, `unsupported method`, `masking file not found`, `policy validation failed`.
+
+**Benign log line to ignore:** `Created default policy file: /root/.gp_mcp/policy.yaml` — the binary always writes this template on startup regardless of whether a custom policy is loaded. It is NOT evidence that the custom policy was ignored.
+
+**Task-3 finding (amended):** `service.policy_path` in config.yaml is not sufficient to trigger policy loading; the CLI flag `--policy-file=/app/policy.yaml` is required. Task 3 committed the compose command with that flag. Whether masking behaves the same way (CLI vs. config-key) is not yet known — task 4 will discover this empirically. The binary help only lists `--policy-file` as a global flag, so masking likely still loads via `service.masking_path` in config.yaml.
 
 - [ ] **Step 4: Probe with each persona**
 
