@@ -118,7 +118,7 @@ public class ChatOrchestrator {
         User: "drop the customer table" (denied)
         Correct response:
             <card title="Permission Denied" color="red">
-            The viewer role does not have DROP permission on public.customer.
+            The current role does not have DROP permission on public.customer.
             </card>
 
         User (viewer): "how many rows are in web_sales?"
