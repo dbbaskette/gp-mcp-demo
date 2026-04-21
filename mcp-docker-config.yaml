@@ -15,6 +15,7 @@ service:
     username: "gpadmin"
     password: "VMware1!"
   policy_path: /app/policy.yaml
+  masking_path: /app/masking.yaml
 
 auth:
   enabled: true
