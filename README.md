@@ -151,9 +151,9 @@ as one of the demo users below; tokens are cached under `~/.mcp-auth/`, so use
 
 | FeauxAuth login | JWT role | MCP permission level | Greenplum user | What they can do |
 |---|---|---|---|---|
-| `viewer@feauxauth.local` | `readonly` | readonly | `readonly_user` | SELECT on `customer`, `store_sales`, `item` |
-| `analyst@feauxauth.local` | `analyst` | analyst | `analyst_user` | SELECT on all tpcds tables |
-| `dba@feauxauth.local` | `admin` | admin | `gpadmin` | Full privileges |
+| `viewer@email.com` | `readonly` | readonly | `readonly_user` | SELECT on `customer`, `store_sales`, `item`, `date_dim` |
+| `analyst@email.com` | `analyst` | analyst | `analyst_user` | SELECT on all tpcds tables |
+| `dba@email.com` | `admin` | admin | `gpadmin` | Full privileges |
 
 Suggested demo flow: ask Claude the same prompt ("list tables", "count rows in
 `web_sales`", "drop `item`") after logging in as each user — the viewer hits

@@ -26,11 +26,11 @@ Prereqs: [DEMO.md](DEMO.md) §1-§4 complete. The three personas (`viewer`, `ana
 
 | Persona | Prompt | Expected |
 |---|---|---|
-| `viewer@feauxauth.local` | "Show me a few recent web orders." | permission denied |
-| `viewer@feauxauth.local` | "Who are a few of our customers?" | works |
-| `analyst@feauxauth.local` | "What do our recent web sales look like?" | works |
-| `analyst@feauxauth.local` | "Get rid of the product catalog — we don't need it anymore." | permission denied (no DDL grant) |
-| `dba@feauxauth.local` | "Spin up a scratch table I can use for audit notes." | works |
+| `viewer@email.com` | "Show me a few recent web orders." | permission denied |
+| `viewer@email.com` | "Who are a few of our customers?" | works |
+| `analyst@email.com` | "What do our recent web sales look like?" | works |
+| `analyst@email.com` | "Get rid of the product catalog — we don't need it anymore." | permission denied (no DDL grant) |
+| `dba@email.com` | "Spin up a scratch table I can use for audit notes." | works |
 
 **Talking point:** *"Delegation to a shared service account is Tier 2 in our security guide; here we're showing User Access — Tier 3 — where each request carries the user's identity all the way to the data."*
 
@@ -84,10 +84,10 @@ And point the server at it by adding `--policy-file=/app/policy.yaml` to the `co
 
 | Persona | Prompt | Expected | Reason |
 |---|---|---|---|
-| `analyst@feauxauth.local` | "Add a test customer named Jane Doe for me." | blocked by MCP | policy denies writes for analyst, even though the DB would too |
-| `analyst@feauxauth.local` | "What are the biggest tables in the warehouse?" | works | reads are allowed |
-| `dba@feauxauth.local` | "Jot a note into that scratch audit table you just made." | works | admin role has write access in policy |
-| `dba@feauxauth.local` | Comment `CREATE` out of admin's allow-list, restart mcp, retry "make me another scratch table" | blocked | MCP policy change only — no database change needed |
+| `analyst@email.com` | "Add a test customer named Jane Doe for me." | blocked by MCP | policy denies writes for analyst, even though the DB would too |
+| `analyst@email.com` | "What are the biggest tables in the warehouse?" | works | reads are allowed |
+| `dba@email.com` | "Jot a note into that scratch audit table you just made." | works | admin role has write access in policy |
+| `dba@email.com` | Comment `CREATE` out of admin's allow-list, restart mcp, retry "make me another scratch table" | blocked | MCP policy change only — no database change needed |
 
 **Talking point:** *"Grants are durable and coarse. Policy is an ops-level lever — you can tighten what the agent is allowed to do without touching database roles. Two independent authorization layers, both evaluated on every request."*
 
@@ -187,7 +187,7 @@ docker compose exec mcp tail -n 40 /app/server.log
 Filter for a persona to tell the story from the logs:
 
 ```bash
-docker compose exec mcp grep 'viewer@feauxauth.local' /app/server.log
+docker compose exec mcp grep 'viewer@email.com' /app/server.log
 ```
 
 **Talking point:** *"This is the 'who did what, as whom, and was it allowed' record. It's what lets you answer audit questions about an autonomous agent the same way you'd answer them about a human analyst."*

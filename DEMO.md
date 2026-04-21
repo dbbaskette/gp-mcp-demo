@@ -77,9 +77,9 @@ This creates:
 |---|---|---|
 | Greenplum | `readonly_user` | SELECT on `customer`, `store_sales`, `item` only |
 | Greenplum | `analyst_user` | SELECT on all tpcds tables |
-| FeauxAuth | `viewer@feauxauth.local` | role `readonly` |
-| FeauxAuth | `analyst@feauxauth.local` | role `analyst` |
-| FeauxAuth | `dba@feauxauth.local` | role `admin` |
+| FeauxAuth | `viewer@email.com` | role `readonly` |
+| FeauxAuth | `analyst@email.com` | role `analyst` |
+| FeauxAuth | `dba@email.com` | role `admin` |
 
 Password for every new account: **`password`**. The script is idempotent — safe to re-run.
 
@@ -101,7 +101,7 @@ This registers `gp-mcp → https://localhost/mcp` in `~/Library/Application Supp
 
 1. In Claude Desktop, start a new conversation and ask: "what tools do you have from gp-mcp?"
 2. A browser tab opens on FeauxAuth's login page.
-3. Log in as `analyst@feauxauth.local` / `password`.
+3. Log in as `analyst@email.com` / `password`.
 4. Approve the consent screen. Claude receives the token and lists the MCP tools.
 5. Ask: "list the tables in the database" — you should see the full TPC-DS schema.
 
@@ -121,7 +121,7 @@ That clears `~/.mcp-auth/` and restarts Claude so the next MCP call forces a fre
 
 ### Persona A — Viewer (`readonly`)
 
-Log in as `viewer@feauxauth.local` / `password`. Try:
+Log in as `viewer@email.com` / `password`. Try:
 
 - "What tables can you see?" — Claude can list schema metadata but queries to most tables return **permission denied**.
 - "Select 5 rows from `customer`" — works (granted).
@@ -130,7 +130,7 @@ Log in as `viewer@feauxauth.local` / `password`. Try:
 
 ### Persona B — Analyst (`analyst`)
 
-`./claude-mcp-config.sh relogin`, then log in as `analyst@feauxauth.local` / `password`.
+`./claude-mcp-config.sh relogin`, then log in as `analyst@email.com` / `password`.
 
 - "Count rows in `web_sales`" — works.
 - "Top 10 items by total sales" — full read access, anything goes.
@@ -138,7 +138,7 @@ Log in as `viewer@feauxauth.local` / `password`. Try:
 
 ### Persona C — DBA (`admin`)
 
-`./claude-mcp-config.sh relogin`, then log in as `dba@feauxauth.local` / `password`.
+`./claude-mcp-config.sh relogin`, then log in as `dba@email.com` / `password`.
 
 - "Create a temp table `demo_audit`" — works.
 - "Drop table `demo_audit`" — works.
