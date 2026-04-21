@@ -38,7 +38,7 @@ personas:
     systemPrompt: |
       You are a business analyst. You have read access to all public tables
       and the Analytics & ML tools. You cannot modify data or run operational
-      diagnostics — defer those to the DBA persona.
+      diagnostics.
     allowedTools:
       - list_schemas
       - list_tables
