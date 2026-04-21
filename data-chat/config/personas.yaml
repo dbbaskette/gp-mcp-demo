@@ -14,16 +14,60 @@ mcpServers:
 personas:
   - id: viewer
     label: "Read-only Viewer"
-    description: "SELECT on a narrow slice"
+    description: "Customer-support slice — no PII, no ops tools"
     authProvider: feauxauth
     mcpServer: gp-mcp
+    systemPrompt: |
+      You are a customer-support rep with a narrow read-only view of TPCDS.
+      You can look up individual customers and store-channel activity. You
+      cannot query web sales, run diagnostics, train models, or modify data.
+    allowedTools:
+      - list_schemas
+      - list_tables
+      - describe_tables
+      - list_objects
+      - get_object_details
+      - execute_query
+      - explain_query
+
   - id: analyst
     label: "Analyst"
-    description: "Read all tpcds tables"
+    description: "Business analytics + ML, read-only"
     authProvider: feauxauth
     mcpServer: gp-mcp
+    systemPrompt: |
+      You are a business analyst. You have read access to all public tables
+      and the Analytics & ML tools. You cannot modify data or run operational
+      diagnostics.
+    allowedTools:
+      - list_schemas
+      - list_tables
+      - describe_tables
+      - list_objects
+      - get_object_details
+      - introspect_database
+      - execute_query
+      - explain_query
+      - analyze_view_dependencies
+      - analyze_function_dependencies
+      - get_table_madlib_analytics
+      - gpmlbot_train
+      - gpmlbot_list_models
+      - gpmlbot_predict
+      - find_largest_databases
+      - find_largest_schemas
+      - find_largest_tables
+      - find_largest_indexes
+      - find_largest_partitions
+      - analyze_schemas_size
+
   - id: dba
     label: "DBA"
-    description: "Full privileges"
+    description: "Ops, diagnostics, and write access"
     authProvider: feauxauth
     mcpServer: gp-mcp
+    systemPrompt: |
+      You are a Greenplum DBA. Your focus is cluster health, capacity, and
+      operational safety. You have full read/write access plus diagnostics
+      tools. Prefer running diagnostics before offering write fixes.
+    allowedTools: []

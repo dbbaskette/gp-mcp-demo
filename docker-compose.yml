@@ -84,17 +84,23 @@ services:
     restart: "no"
 
   mcp:
+    # GA 1.0.0 ships linux/amd64 only. On Apple Silicon Docker Desktop runs
+    # this under Rosetta transparently; the binary is statically linked so
+    # there's no libc surprise.
     image: debian:stable-slim
+    platform: linux/amd64
     depends_on:
       feauxauth:
         condition: service_started
       demo-users:
         condition: service_completed_successfully
     volumes:
-      - ../Tanzu-GP-MCP-Server/gp-mcp-server-linux-arm64:/app/gp-mcp-server:ro
+      - ../Tanzu-GP-MCP-Server/gp-mcp-server-1.0.0-linux-x64:/app/gp-mcp-server:ro
       - ./mcp-docker-config.yaml:/app/config.yaml:ro
+      - ./policy.yaml:/app/policy.yaml:ro
+      - ./masking.yaml:/app/masking.yaml:ro
     working_dir: /app
-    command: ["/app/gp-mcp-server", "streamable-http", "--config-file=/app/config.yaml", "--readonly=false"]
+    command: ["/app/gp-mcp-server", "streamable-http", "--config-file=/app/config.yaml", "--policy-file=/app/policy.yaml", "--readonly=false", "--masking-enabled"]
     restart: unless-stopped
 
   data-chat:

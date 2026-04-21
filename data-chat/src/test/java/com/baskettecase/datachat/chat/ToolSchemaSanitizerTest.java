@@ -1,8 +1,11 @@
 package com.baskettecase.datachat.chat;
 
+import com.baskettecase.datachat.config.PersonaConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,7 +20,8 @@ class ToolSchemaSanitizerTest {
             Mockito.mock(com.baskettecase.datachat.llm.ModelRegistry.class),
             Mockito.mock(com.baskettecase.datachat.mcp.McpGateway.class),
             Mockito.mock(ConversationStore.class),
-            Mockito.mock(AuditEventBus.class));
+            Mockito.mock(AuditEventBus.class),
+            new PersonaConfig(List.of(), List.of(), List.of()));
 
     @Test
     void injectsEmptyPropertiesOnBareObject() throws Exception {

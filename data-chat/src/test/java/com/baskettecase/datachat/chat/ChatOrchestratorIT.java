@@ -1,10 +1,12 @@
 package com.baskettecase.datachat.chat;
 
+import com.baskettecase.datachat.config.PersonaConfig;
 import com.baskettecase.datachat.llm.ModelRegistry;
 import com.baskettecase.datachat.mcp.McpGateway;
 import com.baskettecase.datachat.mcp.NotLoggedInException;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,8 +23,9 @@ class ChatOrchestratorIT {
 
         var conversations = new ConversationStore();
         var audit = new AuditEventBus(event -> {});
+        var personas = new PersonaConfig(List.of(), List.of(), List.of());
 
-        var orch = new ChatOrchestrator(models, gateway, conversations, audit);
+        var orch = new ChatOrchestrator(models, gateway, conversations, audit, personas);
         var events = new CopyOnWriteArrayList<>();
         orch.handle("sess-1", "analyst", "hello", "openai", "gpt-4o-mini", events::add);
 
@@ -37,7 +40,8 @@ class ChatOrchestratorIT {
         var gateway = mock(McpGateway.class);
         when(gateway.openTurnSession(any(), any())).thenThrow(new NotLoggedInException("viewer"));
 
-        var orch = new ChatOrchestrator(models, gateway, new ConversationStore(), new AuditEventBus(e -> {}));
+        var orch = new ChatOrchestrator(models, gateway, new ConversationStore(), new AuditEventBus(e -> {}),
+                new PersonaConfig(List.of(), List.of(), List.of()));
         orch.handle("s", "viewer", "hi", "openai", "gpt-4o", new CopyOnWriteArrayList<>()::add);
 
         verifyNoInteractions(models);

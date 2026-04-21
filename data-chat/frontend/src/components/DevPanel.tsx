@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { usePersonas } from '../state/personaStore';
 import { openAuditStream } from '../api/audit';
+import { logout, getPersona } from '../api/personas';
 
 type DevEvent = Record<string, unknown>;
 
@@ -118,10 +119,29 @@ function LogEntry({ ev }: { ev: DevEvent }) {
 
 export default function DevPanel({ onClose }: { onClose: () => void }) {
   const slots = usePersonas(s => s.slots);
+  const setInfo = usePersonas(s => s.setInfo);
   const [tab, setTab] = useState<'logs' | 'claims' | 'tools'>('logs');
   const [events, setEvents] = useState<DevEvent[]>([]);
   const [filter, setFilter] = useState<string>('all');
+  const [loggingOut, setLoggingOut] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
+
+  async function logoutEveryone() {
+    const ids = Object.entries(slots)
+      .filter(([, s]) => s.info?.loggedIn)
+      .map(([id]) => id);
+    if (ids.length === 0) return;
+    setLoggingOut(true);
+    try {
+      await Promise.all(ids.map(id => logout(id).catch(() => {})));
+      // Refresh auth state from server so UI reflects logout
+      await Promise.all(ids.map(async id => {
+        try { setInfo(id, await getPersona(id)); } catch { /* ignore */ }
+      }));
+    } finally {
+      setLoggingOut(false);
+    }
+  }
 
   useEffect(() => {
     const src = openAuditStream(ev => setEvents(a => [ev as DevEvent, ...a].slice(0, 500)));
@@ -237,10 +257,27 @@ export default function DevPanel({ onClose }: { onClose: () => void }) {
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-2 border-t border-ink/15 bg-paper-2/80 flex items-center justify-between">
+      <div className="px-4 py-2 border-t border-ink/15 bg-paper-2/80 flex items-center justify-between gap-2">
         <span className="font-mono text-label-xs uppercase text-ink-3">
           {events.length} events captured
         </span>
+        {(() => {
+          const activeCount = Object.values(slots).filter(s => s.info?.loggedIn).length;
+          const disabled = loggingOut || activeCount === 0;
+          return (
+            <button
+              onClick={logoutEveryone}
+              disabled={disabled}
+              title={activeCount === 0 ? 'No active sessions' : `Log out ${activeCount} persona${activeCount === 1 ? '' : 's'}`}
+              className={`px-2 py-1 font-mono text-label-xs uppercase border transition-colors
+                ${disabled
+                  ? 'border-ink/15 text-ink-3 cursor-not-allowed'
+                  : 'border-cinnabar text-cinnabar hover:bg-cinnabar hover:text-paper'}`}
+            >
+              {loggingOut ? 'Logging out…' : `Log out all${activeCount > 0 ? ` (${activeCount})` : ''}`}
+            </button>
+          );
+        })()}
       </div>
     </aside>
   );

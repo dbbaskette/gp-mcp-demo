@@ -47,8 +47,8 @@ GRANT USAGE   ON SCHEMA public    TO readonly_user, analyst_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO analyst_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO analyst_user;
 
--- readonly: narrow slice of tpcds
-GRANT SELECT ON customer, store_sales, item TO readonly_user;
+-- readonly: narrow slice of tpcds (viewer persona scope)
+GRANT SELECT ON customer, store_sales, item, date_dim TO readonly_user;
 SQL
 
 log "Greenplum roles ready: readonly_user, analyst_user"
@@ -97,16 +97,16 @@ create_feauxauth_user() {
 
 log "Creating FeauxAuth users (password=$PASSWORD)"
 refresh_users_cache
-create_feauxauth_user "viewer@feauxauth.local"  "Demo Viewer"  "readonly"
-create_feauxauth_user "analyst@feauxauth.local" "Demo Analyst" "analyst"
-create_feauxauth_user "dba@feauxauth.local"     "Demo DBA"     "admin"
+create_feauxauth_user "viewer@email.com"  "Demo Viewer"  "readonly"
+create_feauxauth_user "analyst@email.com" "Demo Analyst" "analyst"
+create_feauxauth_user "dba@email.com"     "Demo DBA"     "admin"
 
 log "Demo users ready."
 cat <<EOF
 
 Demo logins (password: ${PASSWORD})
-  viewer@feauxauth.local    role=readonly  → Greenplum readonly_user
-  analyst@feauxauth.local   role=analyst   → Greenplum analyst_user
-  dba@feauxauth.local       role=admin     → Greenplum gpadmin
+  viewer@email.com    role=readonly  → Greenplum readonly_user
+  analyst@email.com   role=analyst   → Greenplum analyst_user
+  dba@email.com       role=admin     → Greenplum gpadmin
 
 EOF

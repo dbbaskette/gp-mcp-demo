@@ -3,6 +3,7 @@ package com.baskettecase.datachat.chat;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.baskettecase.datachat.config.PersonaConfig;
 import com.baskettecase.datachat.llm.ModelRegistry;
 import com.baskettecase.datachat.mcp.McpClientRegistry;
 import com.baskettecase.datachat.mcp.McpGateway;
@@ -39,7 +40,17 @@ public class ChatOrchestrator {
         1. Answer ONLY what the user asked. Do not volunteer extra information about your tools,
            capabilities, or the environment unless specifically asked.
         2. Use MCP tools to get real data. Never guess or fabricate results.
-        3. If a query fails due to permissions, report the exact error briefly.
+        3. STOP ON PERMISSION DENIAL. If ANY tool call returns a permission-denied / access-denied
+           / policy-blocked error (including phrases like "permission denied", "denied by policy",
+           "not allowed", "must be owner", "insufficient privileges"), you MUST stop immediately.
+           Do NOT:
+             - retry the same query with different SQL
+             - try a different tool to reach the same answer (e.g. routing around a denied
+               execute_query by calling analyze_schemas_size, list_tables, describe_tables, etc.)
+             - paraphrase or split the question to sneak past the deny
+           Instead, render ONE red <card> reporting the denial and the object that was denied.
+           Then end the turn. Do NOT name other personas, roles, or users who might have access —
+           that is reconnaissance information and must not be disclosed.
         4. Keep responses short and focused on the data.
 
         === OUTPUT FORMAT (MANDATORY) ===
@@ -107,7 +118,15 @@ public class ChatOrchestrator {
         User: "drop the customer table" (denied)
         Correct response:
             <card title="Permission Denied" color="red">
-            The viewer role does not have DROP permission on public.customer.
+            The current role does not have DROP permission on public.customer.
+            </card>
+
+        User (viewer): "how many rows are in web_sales?"
+        After execute_query returns: permission denied for table web_sales
+        Correct response (STOP — do NOT call list_tables / analyze_schemas_size / any other tool,
+        and do NOT suggest who has access):
+            <card title="Permission Denied" color="red">
+            Access to `web_sales` is denied under the current role.
             </card>
 
         === SAFETY ===
@@ -119,13 +138,16 @@ public class ChatOrchestrator {
     private final McpGateway mcp;
     private final ConversationStore conversations;
     private final AuditEventBus audit;
+    private final PersonaConfig personas;
     private final ObjectMapper om = new ObjectMapper();
 
-    public ChatOrchestrator(ModelRegistry models, McpGateway mcp, ConversationStore conversations, AuditEventBus audit) {
+    public ChatOrchestrator(ModelRegistry models, McpGateway mcp, ConversationStore conversations,
+                            AuditEventBus audit, PersonaConfig personas) {
         this.models = models;
         this.mcp = mcp;
         this.conversations = conversations;
         this.audit = audit;
+        this.personas = personas;
     }
 
     public void handle(String sessionId, String personaId, String content, String providerId, String modelId,
@@ -138,10 +160,17 @@ public class ChatOrchestrator {
         try {
             mcpSession = mcp.openTurnSession(sessionId, personaId);
             log.info("MCP session opened for persona={}", personaId);
+            List<String> allowedTools = personas.personas().stream()
+                .filter(p -> p.id().equals(personaId))
+                .findFirst()
+                .map(PersonaConfig.Persona::allowedToolsOrEmpty)
+                .orElse(List.of());
+            log.info("Persona {} allowedTools policy: {}", personaId, allowedTools.isEmpty() ? "ALL" : allowedTools);
             var tools = mcp.listTools(mcpSession);
             log.info("Got {} tools for persona={}", tools.size(), personaId);
 
             callbacks = tools.stream()
+                .filter(t -> allowedTools.isEmpty() || allowedTools.contains(t.name()))
                 .<ToolCallback>map(t -> {
                     String schema;
                     try { schema = om.writeValueAsString(t.inputSchema()); }
@@ -157,7 +186,7 @@ public class ChatOrchestrator {
                         .build();
                 })
                 .toList();
-            log.info("Built {} callbacks for persona={}", callbacks.size(), personaId);
+            log.info("Filtered to {} callbacks for persona={} (from {} tools)", callbacks.size(), personaId, tools.size());
         } catch (NotLoggedInException nle) {
             sink.accept(WireMessages.AuthRequired.of(personaId));
             return;
@@ -178,8 +207,18 @@ public class ChatOrchestrator {
         long t0 = System.nanoTime();
         String response;
         try {
+            String personaPrompt = personas.personas().stream()
+                .filter(p -> p.id().equals(personaId))
+                .findFirst()
+                .map(p -> p.systemPromptOr(""))
+                .orElse("");
+
+            String effectiveSystemPrompt = personaPrompt.isBlank()
+                ? SYSTEM_PROMPT
+                : SYSTEM_PROMPT + "\n\n=== PERSONA ===\n" + personaPrompt;
+
             var promptSpec = chat.prompt()
-                .system(SYSTEM_PROMPT)
+                .system(effectiveSystemPrompt)
                 .messages(history)
                 .toolCallbacks(callbacks.toArray(new ToolCallback[0]));
             // LM Studio shares a single bean across multiple configured models; override the

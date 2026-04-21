@@ -1,0 +1,24 @@
+# Column-level masking rules per role. Methods verified present in
+# GA 1.0.0: full, partial (show_last: N), hash, null.
+# Role names correspond to `name` fields in mcp-docker-config.yaml
+# permission_levels.
+masking:
+  enabled: true
+  default_method: null
+  roles:
+    readonly:
+      enabled: true
+      columns:
+        - { schema: public, table: customer, column: c_email_address, method: full }
+        - { schema: public, table: customer, column: c_first_name,    method: full }
+        - { schema: public, table: customer, column: c_last_name,     method: full }
+        - { schema: public, table: customer, column: c_birth_year,    method: full }
+        - { schema: public, table: customer, column: c_login,         method: full }
+        - { schema: public, table: customer, column: c_customer_id,   method: partial, show_last: 4 }
+    analyst:
+      enabled: true
+      columns:
+        - { schema: public, table: customer, column: c_email_address, method: hash }
+        - { schema: public, table: customer, column: c_birth_year,    method: hash }
+    admin:
+      enabled: false
