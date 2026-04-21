@@ -50,7 +50,7 @@ public class ModelRegistry {
             @Autowired(required = false) GoogleGenAiChatModel googleGenAi,
             @Value("${datachat.openai.model:gpt-5-nano-2025-08-07}") String openAiModel,
             @Value("${datachat.anthropic.model:claude-sonnet-4-6}") String anthropicModel,
-            @Value("${spring.ai.google.genai.chat.options.model:gemini-3.1-flash-lite-preview}") String googleModel,
+            @Value("${spring.ai.google.genai.chat.options.model:gemini-3-flash-preview}") String googleModel,
             @Value("${datachat.lmstudio.model:local-model}") String lmStudioModel
         ) {
             // LM Studio accepts a CSV list (LMSTUDIO_MODEL=model-a,model-b) so the picker

@@ -12,8 +12,10 @@ export default function ModelPicker({
   useEffect(() => {
     listProviders().then(ps => {
       setProviders(ps);
-      if ((!value.providerId || !value.modelId) && ps.length > 0 && ps[0].models.length > 0) {
-        onChange({ providerId: ps[0].id, modelId: ps[0].models[0] });
+      if ((!value.providerId || !value.modelId) && ps.length > 0) {
+        // Prefer Google Gemini when available, otherwise fall back to the first provider.
+        const preferred = ps.find(p => p.id === 'google' && p.models.length > 0) ?? ps.find(p => p.models.length > 0);
+        if (preferred) onChange({ providerId: preferred.id, modelId: preferred.models[0] });
       }
     });
   }, []);

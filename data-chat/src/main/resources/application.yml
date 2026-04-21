@@ -14,7 +14,7 @@ spring:
         chat:
           options:
             # Override via GEMINI_MODEL / GEMINI_TEMPERATURE env vars
-            model: ${GEMINI_MODEL:gemini-3.1-flash-lite-preview}
+            model: ${GEMINI_MODEL:gemini-3-flash-preview}
             temperature: ${GEMINI_TEMPERATURE:0.7}
     mcp:
       client:
