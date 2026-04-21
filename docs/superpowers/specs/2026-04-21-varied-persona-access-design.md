@@ -36,7 +36,7 @@ per-persona tool subset) in under 60 seconds of walkthrough.
 | **JWT role → DB user** | `readonly` → `readonly_user` | `analyst` → `analyst_user` | `admin` → `gpadmin` |
 | **Object GRANTs** | SELECT on `customer`, `store_sales`, `item`, `date_dim` | SELECT on all `public.*` tables | superuser (+ `pg_catalog`, `gp_toolkit`) |
 | **policy.yaml** | `readonly: true`; allowed: `SELECT`, `EXPLAIN`, `SHOW` only | `readonly: true`; denied: `INSERT`, `UPDATE`, `DELETE`, `DROP`, `TRUNCATE`, `ALTER` | `readonly: false`; denied: `DROP DATABASE`, `TRUNCATE` (safety net) |
-| **masking.yaml** | Full redact: `c_email_address`, `c_first_name`, `c_last_name`, `c_birth_year`, `c_login`. Partial on `c_customer_id` (last 4). | Partial on `c_email_address` (domain visible), `c_birth_year` shown as decade bucket, `c_customer_id` clear. | Disabled — clear values. |
+| **masking.yaml** | Full redact: `c_email_address`, `c_first_name`, `c_last_name`, `c_birth_year`, `c_login`. Partial (`show_last: 4`) on `c_customer_id`. | `email` method on `c_email_address` (domain visible, local part redacted); `HASH` on `c_birth_year` (consistent fake year); other PII clear. | Disabled — clear values. |
 | **LLM tool subset** (soft) | Discovery tools + `execute_query`, `explain_query` | Above + `get_table_madlib_analytics`, `gpmlbot_list_models`, `gpmlbot_train`, `gpmlbot_predict`, `find_largest_*` | Above + diagnostics: `check_table_bloat`, `check_table_skew`, `check_stats_freshness`, `check_long_running_queries`, `check_disk_space`, `cancel_query` |
 | **System-prompt voice** | "Support rep looking up individual customers." | "Business analyst running KPIs and ML experiments." | "Greenplum DBA running ops, capacity, and health checks." |
 
@@ -69,9 +69,9 @@ Each prompt runs in all three panes simultaneously via compare mode.
 ### Q1. Masking reveal (visibility)
 > "Show me the first 5 customers with their email, customer ID, and birth year."
 
-- **Viewer**: redacted rows (`***REDACTED***`, ID last-4).
-- **Analyst**: partial (`b***@yahoo.com`, `1970s`).
-- **DBA**: clear (`bob.smith@yahoo.com`, `1972`).
+- **Viewer**: redacted rows — `***REDACTED***` for name/email/birth_year, customer ID shows last 4 only.
+- **Analyst**: `***@yahoo.com` (email's local part redacted, domain intact), birth year hashed to a consistent fake year, names + ID clear.
+- **DBA**: clear — `bob.smith@yahoo.com`, `1972`, full ID.
 
 ### Q2. Scope reveal (object GRANT)
 > "How many orders are in the `web_sales` table?"
@@ -140,6 +140,11 @@ gpdb:
 ```
 
 ### 3. NEW `masking.yaml`
+
+Supported methods (verified in GA 1.0.0 binary strings): `FULL`, `PARTIAL`
+(with `show_last: N`), `HASH`, `email`, `NULL`, `random`, `NONE`. Exact YAML
+shape to be confirmed at task-1 smoke test; schema below follows the PDF.
+
 ```yaml
 masking:
   enabled: true
@@ -147,24 +152,20 @@ masking:
     readonly:
       enabled: true
       columns:
-        - { schema: public, table: customer, column: c_email_address,  method: full }
-        - { schema: public, table: customer, column: c_first_name,     method: full }
-        - { schema: public, table: customer, column: c_last_name,      method: full }
-        - { schema: public, table: customer, column: c_birth_year,     method: full }
-        - { schema: public, table: customer, column: c_login,          method: full }
-        - { schema: public, table: customer, column: c_customer_id,    method: partial, params: { show_last: 4 } }
+        - { schema: public, table: customer, column: c_email_address, method: FULL }
+        - { schema: public, table: customer, column: c_first_name,    method: FULL }
+        - { schema: public, table: customer, column: c_last_name,     method: FULL }
+        - { schema: public, table: customer, column: c_birth_year,    method: FULL }
+        - { schema: public, table: customer, column: c_login,         method: FULL }
+        - { schema: public, table: customer, column: c_customer_id,   method: PARTIAL, show_last: 4 }
     analyst:
       enabled: true
-      patterns:
-        - { pattern: "*email*",       method: partial, params: { show_last_domain: true } }
-        - { pattern: "c_birth_year",  method: bucket,  params: { bucket: decade } }
+      columns:
+        - { schema: public, table: customer, column: c_email_address, method: email }
+        - { schema: public, table: customer, column: c_birth_year,    method: HASH }
     admin:
       enabled: false
 ```
-(The exact `method` names — `partial`, `bucket`, `show_last_domain` — must be
-verified against the MCP server's supported masking methods during the
-implementation plan; substitute the nearest supported equivalent if one of
-these isn't available.)
 
 ### 4. `docker/setup-demo-users.sh`
 Expand `readonly_user` GRANTs:
@@ -201,16 +202,22 @@ is purely a presentation filter for the LLM.
 
 ## Open questions for the implementation plan
 
-- Does the MCP server version in `Tanzu-GP-MCP-Server/gp-mcp-server-linux-arm64`
-  support `policy.yaml` and `masking.yaml` in the v13 form shown in the PDF?
-  Verify by mounting a minimal version and hitting the server with each
-  persona's JWT.
-- Masking methods: confirm which of `full`, `partial`, `bucket`,
-  `show_last_domain` are actually implemented. Fall back to pattern-based
-  masking if `bucket` isn't supported (e.g., drop `c_birth_year` shaping for
-  analyst and accept "clear or redacted" as the binary).
+- MCP server is **GA 1.0.0** (commit `a9b2d187`, build 2026-04-21), running
+  under `platform: linux/amd64` via Rosetta on Apple Silicon. Policy and
+  masking features confirmed compiled in.
+- Exact `masking.yaml` YAML shape — the binary exposes struct tags
+  (`masking`, `roles`, `columns`, `patterns`, `column`, `pattern`, `method`,
+  `show_last`, `default_method`, `masking_enabled`) but the enclosing file
+  layout needs a quick mount-and-load smoke test. Plan task 1 does exactly
+  that before writing the real file.
+- `masking_path` is configured via `service.masking_path` in config.yaml
+  (or `SERVICE_MASKING_PATH` env). There is no dedicated CLI flag for the
+  file path, but there is a CLI override for the `enabled` bit.
 - `default_database_username` in `mcp-docker-config.yaml` currently falls
   through to `readonly_user`. That's safe — keep it.
+- Demo logins were updated out-of-band from `@feauxauth.local` to
+  `@email.com`; `docker/setup-demo-users.sh` still seeds the old addresses
+  as dupes. Realigning that script is a side-fix bundled into plan task 2.
 
 ## Success criteria
 
