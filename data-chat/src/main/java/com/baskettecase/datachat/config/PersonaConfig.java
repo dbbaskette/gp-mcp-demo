@@ -33,6 +33,18 @@ public record PersonaConfig(
         String label,
         String description,
         String authProvider,
-        String mcpServer
-    ) {}
+        String mcpServer,
+        String systemPrompt,
+        List<String> allowedTools
+    ) {
+        /** Safe accessor: null → empty list (which tasks 7/8 interpret as "no filter, all tools allowed"). */
+        public List<String> allowedToolsOrEmpty() {
+            return allowedTools == null ? List.of() : allowedTools;
+        }
+
+        /** Safe accessor: null/blank → fallback. */
+        public String systemPromptOr(String fallback) {
+            return (systemPrompt == null || systemPrompt.isBlank()) ? fallback : systemPrompt;
+        }
+    }
 }
