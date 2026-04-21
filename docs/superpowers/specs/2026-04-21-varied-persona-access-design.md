@@ -36,7 +36,7 @@ per-persona tool subset) in under 60 seconds of walkthrough.
 | **JWT role → DB user** | `readonly` → `readonly_user` | `analyst` → `analyst_user` | `admin` → `gpadmin` |
 | **Object GRANTs** | SELECT on `customer`, `store_sales`, `item`, `date_dim` | SELECT on all `public.*` tables | superuser (+ `pg_catalog`, `gp_toolkit`) |
 | **policy.yaml** | `readonly: true`; allowed: `SELECT`, `EXPLAIN`, `SHOW` only | `readonly: true`; denied: `INSERT`, `UPDATE`, `DELETE`, `DROP`, `TRUNCATE`, `ALTER` | `readonly: false`; denied: `TRUNCATE` (the GA validator rejects granular forms like `DROP DATABASE` — DB-drop protection falls to Greenplum GRANTs) |
-| **masking.yaml** | Full redact: `c_email_address`, `c_first_name`, `c_last_name`, `c_birth_year`, `c_login`. Partial (`show_last: 4`) on `c_customer_id`. | `email` method on `c_email_address` (domain visible, local part redacted); `HASH` on `c_birth_year` (consistent fake year); other PII clear. | Disabled — clear values. |
+| **masking.yaml** | `full` redact on `c_email_address`, `c_first_name`, `c_last_name`, `c_birth_year`, `c_login`. `partial` (`show_last: 4`) on `c_customer_id`. | `hash` on `c_email_address` and `c_birth_year` (domain-visible `email` method is NOT in GA 1.0.0 — only `full`/`partial`/`null`/`hash` are accepted); other PII clear. | Disabled — clear values. |
 | **LLM tool subset** (soft) | Discovery tools + `execute_query`, `explain_query` | Above + `get_table_madlib_analytics`, `gpmlbot_list_models`, `gpmlbot_train`, `gpmlbot_predict`, `find_largest_*` | Above + diagnostics: `check_table_bloat`, `check_table_skew`, `check_stats_freshness`, `check_long_running_queries`, `check_disk_space`, `cancel_query` |
 | **System-prompt voice** | "Support rep looking up individual customers." | "Business analyst running KPIs and ML experiments." | "Greenplum DBA running ops, capacity, and health checks." |
 
@@ -69,8 +69,8 @@ Each prompt runs in all three panes simultaneously via compare mode.
 ### Q1. Masking reveal (visibility)
 > "Show me the first 5 customers with their email, customer ID, and birth year."
 
-- **Viewer**: redacted rows — `***REDACTED***` for name/email/birth_year, customer ID shows last 4 only.
-- **Analyst**: `***@yahoo.com` (email's local part redacted, domain intact), birth year hashed to a consistent fake year, names + ID clear.
+- **Viewer**: all PII redacted (`[REDACTED]` for name/email/birth_year), customer ID shows last 4 only (`[MASKED]AAAA`).
+- **Analyst**: email + birth year replaced with deterministic hash strings; names and customer ID clear.
 - **DBA**: clear — `bob.smith@yahoo.com`, `1972`, full ID.
 
 ### Q2. Scope reveal (object GRANT)
@@ -211,8 +211,13 @@ is purely a presentation filter for the LLM.
   layout needs a quick mount-and-load smoke test. Plan task 1 does exactly
   that before writing the real file.
 - `masking_path` is configured via `service.masking_path` in config.yaml
-  (or `SERVICE_MASKING_PATH` env). There is no dedicated CLI flag for the
-  file path, but there is a CLI override for the `enabled` bit.
+  (or `SERVICE_MASKING_PATH` env). There is no CLI flag for the file path,
+  but `--masking-enabled` **is required** to activate masking at runtime —
+  `masking.enabled: true` in the YAML alone is not sufficient.
+- Supported masking methods in GA 1.0.0 are ONLY `full`, `partial` (with
+  `show_last: N`), `null`, and `hash` — all lowercase. `email`, `random`,
+  `NONE` and uppercase variants fail validation. The spec originally
+  guessed `email` for domain-visible masking; replaced with `hash`.
 - `default_database_username` in `mcp-docker-config.yaml` currently falls
   through to `readonly_user`. That's safe — keep it.
 - Demo logins were updated out-of-band from `@feauxauth.local` to
