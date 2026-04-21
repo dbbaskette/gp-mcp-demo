@@ -160,10 +160,17 @@ public class ChatOrchestrator {
         try {
             mcpSession = mcp.openTurnSession(sessionId, personaId);
             log.info("MCP session opened for persona={}", personaId);
+            List<String> allowedTools = personas.personas().stream()
+                .filter(p -> p.id().equals(personaId))
+                .findFirst()
+                .map(PersonaConfig.Persona::allowedToolsOrEmpty)
+                .orElse(List.of());
+            log.info("Persona {} allowedTools policy: {}", personaId, allowedTools.isEmpty() ? "ALL" : allowedTools);
             var tools = mcp.listTools(mcpSession);
             log.info("Got {} tools for persona={}", tools.size(), personaId);
 
             callbacks = tools.stream()
+                .filter(t -> allowedTools.isEmpty() || allowedTools.contains(t.name()))
                 .<ToolCallback>map(t -> {
                     String schema;
                     try { schema = om.writeValueAsString(t.inputSchema()); }
@@ -179,7 +186,7 @@ public class ChatOrchestrator {
                         .build();
                 })
                 .toList();
-            log.info("Built {} callbacks for persona={}", callbacks.size(), personaId);
+            log.info("Filtered to {} callbacks for persona={} (from {} tools)", callbacks.size(), personaId, tools.size());
         } catch (NotLoggedInException nle) {
             sink.accept(WireMessages.AuthRequired.of(personaId));
             return;
