@@ -35,7 +35,7 @@ per-persona tool subset) in under 60 seconds of walkthrough.
 |---|---|---|---|
 | **JWT role → DB user** | `readonly` → `readonly_user` | `analyst` → `analyst_user` | `admin` → `gpadmin` |
 | **Object GRANTs** | SELECT on `customer`, `store_sales`, `item`, `date_dim` | SELECT on all `public.*` tables | superuser (+ `pg_catalog`, `gp_toolkit`) |
-| **policy.yaml** | `readonly: true`; allowed: `SELECT`, `EXPLAIN`, `SHOW` only | `readonly: true`; denied: `INSERT`, `UPDATE`, `DELETE`, `DROP`, `TRUNCATE`, `ALTER` | `readonly: false`; denied: `DROP DATABASE`, `TRUNCATE` (safety net) |
+| **policy.yaml** | `readonly: true`; allowed: `SELECT`, `EXPLAIN`, `SHOW` only | `readonly: true`; denied: `INSERT`, `UPDATE`, `DELETE`, `DROP`, `TRUNCATE`, `ALTER` | `readonly: false`; denied: `TRUNCATE` (the GA validator rejects granular forms like `DROP DATABASE` — DB-drop protection falls to Greenplum GRANTs) |
 | **masking.yaml** | Full redact: `c_email_address`, `c_first_name`, `c_last_name`, `c_birth_year`, `c_login`. Partial (`show_last: 4`) on `c_customer_id`. | `email` method on `c_email_address` (domain visible, local part redacted); `HASH` on `c_birth_year` (consistent fake year); other PII clear. | Disabled — clear values. |
 | **LLM tool subset** (soft) | Discovery tools + `execute_query`, `explain_query` | Above + `get_table_madlib_analytics`, `gpmlbot_list_models`, `gpmlbot_train`, `gpmlbot_predict`, `find_largest_*` | Above + diagnostics: `check_table_bloat`, `check_table_skew`, `check_stats_freshness`, `check_long_running_queries`, `check_disk_space`, `cancel_query` |
 | **System-prompt voice** | "Support rep looking up individual customers." | "Business analyst running KPIs and ML experiments." | "Greenplum DBA running ops, capacity, and health checks." |

@@ -256,8 +256,17 @@ gpdb:
   admin:
     readonly: false
     allowed: []
-    denied: ["DROP DATABASE", "TRUNCATE"]
+    denied: ["TRUNCATE"]
 ```
+
+> Task-1 smoke test finding: the policy validator accepts only bare
+> statement-type tokens from a fixed list (SELECT, INSERT, UPDATE, DELETE,
+> CREATE, ALTER, DROP, TRUNCATE, GRANT, REVOKE, COPY, VACUUM, ANALYZE,
+> REINDEX, SHOW, EXPLAIN, DESCRIBE, WITH, UNION, BEGIN, COMMIT, ROLLBACK,
+> SET, RESET). Granular forms like `"DROP DATABASE"` fail validation with
+> `invalid statement type 'DROP DATABASE'`. The spec's DB-drop safety net
+> therefore relies on Greenplum GRANTs (only `gpadmin` has superuser) and
+> DBA trust, not MCP policy.
 
 - [ ] **Step 2: Mount it into the mcp container**
 
