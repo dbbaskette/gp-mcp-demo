@@ -1,0 +1,20 @@
+# Per-role SQL statement policy for the Greenplum MCP server.
+# Role names correspond to `name` fields in mcp-docker-config.yaml
+# permission_levels. The `all` role is the default/fallback.
+gpdb:
+  all:
+    readonly: true
+    allowed: []
+    denied: []
+  readonly:
+    readonly: true
+    allowed: ["SELECT", "EXPLAIN", "SHOW"]
+    denied: []
+  analyst:
+    readonly: true
+    allowed: []
+    denied: ["INSERT", "UPDATE", "DELETE", "DROP", "TRUNCATE", "ALTER"]
+  admin:
+    readonly: false
+    allowed: []
+    denied: ["TRUNCATE"]

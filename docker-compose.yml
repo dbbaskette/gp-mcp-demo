@@ -97,8 +97,9 @@ services:
     volumes:
       - ../Tanzu-GP-MCP-Server/gp-mcp-server-1.0.0-linux-x64:/app/gp-mcp-server:ro
       - ./mcp-docker-config.yaml:/app/config.yaml:ro
+      - ./policy.yaml:/app/policy.yaml:ro
     working_dir: /app
-    command: ["/app/gp-mcp-server", "streamable-http", "--config-file=/app/config.yaml", "--readonly=false"]
+    command: ["/app/gp-mcp-server", "streamable-http", "--config-file=/app/config.yaml", "--policy-file=/app/policy.yaml", "--readonly=false"]
     restart: unless-stopped
 
   data-chat:
