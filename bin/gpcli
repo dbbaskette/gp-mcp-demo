@@ -1,5 +1,6 @@
 #!/bin/sh
 # Run psql against the Greenplum demo cluster as gpadmin. Accepts the same
 # arguments psql does (-c "SQL", heredoc on stdin, etc.).
+export DOCKER_CLI_HINTS=false
 exec docker exec -i -u gpadmin -e PGPASSWORD='VMware1!' gp-mcp-demo-greenplum-1 \
   /usr/local/greenplum-db/bin/psql -U gpadmin -h localhost -d tpcds "$@"
