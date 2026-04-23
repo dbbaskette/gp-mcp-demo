@@ -7,9 +7,18 @@
 
 set -eu
 
-# Resolve personas.yaml relative to this script's location (repo-portable):
-# gp-mcp-demo/bin/persona-allow -> gp-mcp-demo/data-chat/config/personas.yaml
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+# Resolve personas.yaml relative to this script's REAL location, following any
+# symlinks (so this works when invoked via ~/bin/persona-allow which symlinks
+# into the repo's bin/). Portable resolver — no readlink -f dependency.
+SCRIPT="$0"
+while [ -L "$SCRIPT" ]; do
+  LINK="$(readlink "$SCRIPT")"
+  case "$LINK" in
+    /*) SCRIPT="$LINK" ;;
+    *)  SCRIPT="$(dirname "$SCRIPT")/$LINK" ;;
+  esac
+done
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT")" && pwd -P)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 PERSONAS_FILE="${PERSONAS_FILE:-$REPO_ROOT/data-chat/config/personas.yaml}"
 
