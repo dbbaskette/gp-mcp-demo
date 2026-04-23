@@ -1,0 +1,57 @@
+#!/bin/sh
+# Reset the demo stack to the pre-Scene-12 state for re-recording:
+#   - /app/gpdb-tools.yaml removed (MCP reloads back to 37 built-in tools)
+#   - public.web_sales_quarterly_revenue view dropped
+#   - quarterly_web_sales_revenue line removed from Viewer's allowedTools
+#   - data-chat restarted so the persona change takes effect
+#
+# After this runs, Scene 12 can record from scratch:
+#   - `ls /app/` shows no gpdb-tools.yaml
+#   - view doesn't exist yet (gpcli view creation is on-camera)
+#   - persona-allow is on-camera (the Viewer doesn't have the tool yet)
+
+set -eu
+
+# Resolve repo root through any symlink chain (works when invoked from ~/bin/).
+SCRIPT="$0"
+while [ -L "$SCRIPT" ]; do
+  LINK="$(readlink "$SCRIPT")"
+  case "$LINK" in
+    /*) SCRIPT="$LINK" ;;
+    *)  SCRIPT="$(dirname "$SCRIPT")/$LINK" ;;
+  esac
+done
+REPO_ROOT="$(cd "$(dirname "$SCRIPT")/.." && pwd -P)"
+PERSONAS_FILE="$REPO_ROOT/data-chat/config/personas.yaml"
+
+echo "==> Removing /app/gpdb-tools.yaml"
+mcp rm -f /app/gpdb-tools.yaml || true
+
+echo "==> Dropping public.web_sales_quarterly_revenue"
+gpcli -c 'DROP VIEW IF EXISTS public.web_sales_quarterly_revenue;' | tail -n +1
+
+echo "==> Removing quarterly_web_sales_revenue from Viewer's allowedTools"
+sed -i '' '/- quarterly_web_sales_revenue/d' "$PERSONAS_FILE"
+
+echo "==> Reloading mcp + data-chat"
+mcp-reload
+sleep 5
+
+echo "==> Verifying clean state"
+# The "Loaded N built-in GPDB tools" line prints once per startup, immediately
+# before any "Loaded M dynamic tools" line. Grab lines AFTER the most recent
+# built-in marker — if "dynamic tools" shows up in that window, the reset
+# failed. Older runs buried earlier in the log are ignored.
+LAST_RUN="$(mcp-log 200 | awk '/Loaded [0-9]+ built-in GPDB tools/{seen=1; last=""} seen{last=last"\n"$0} END{print last}')"
+if [ -z "$LAST_RUN" ]; then
+  echo "!! couldn'\''t find recent startup marker in mcp-log — restart may not have completed" >&2
+  exit 1
+fi
+if printf '%s' "$LAST_RUN" | grep -q "dynamic tools"; then
+  echo "!! current run still shows dynamic tools — check mcp-log manually" >&2
+  exit 1
+fi
+printf '%s\n' "$LAST_RUN" | grep "built-in GPDB tools" | tail -1
+
+echo
+echo "Scene 12 is ready to record from a clean slate."
