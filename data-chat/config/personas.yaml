@@ -40,6 +40,7 @@ personas:
       - get_object_details
       - execute_query
       - explain_query
+      - quarterly_web_sales_revenue
 
   - id: analyst
     label: "Analyst"
