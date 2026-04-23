@@ -1,0 +1,4 @@
+#!/bin/sh
+# Tail the MCP server log. Default: last 10 lines.
+TAIL="${1:-10}"
+exec docker logs --tail "$TAIL" gp-mcp-demo-mcp-1 2>&1

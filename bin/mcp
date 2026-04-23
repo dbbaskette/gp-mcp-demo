@@ -1,0 +1,9 @@
+#!/bin/sh
+# Drop into the MCP server shell, or run a command against it.
+#   mcp               -> interactive shell inside the MCP server
+#   mcp -c 'ls /app'  -> run one command, return output
+if [ $# -eq 0 ]; then
+  exec docker exec -it gp-mcp-demo-mcp-1 env PS1='$ ' bash --norc --noprofile
+else
+  exec docker exec gp-mcp-demo-mcp-1 "$@"
+fi

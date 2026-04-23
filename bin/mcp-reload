@@ -1,0 +1,4 @@
+#!/bin/sh
+# Restart the MCP server and the Data-Chat service. Use after editing
+# /app/gpdb-tools.yaml or data-chat/config/personas.yaml.
+exec docker restart gp-mcp-demo-mcp-1 gp-mcp-demo-data-chat-1 >/dev/null

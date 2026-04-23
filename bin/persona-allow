@@ -1,0 +1,50 @@
+#!/bin/sh
+# Append a tool to a persona's allowedTools in data-chat/config/personas.yaml.
+# Usage:  persona-allow <persona-id> <tool-name>
+# Example: persona-allow viewer quarterly_web_sales_revenue
+#
+# Idempotent — skips if the tool is already listed under the persona block.
+
+set -eu
+
+# Resolve personas.yaml relative to this script's location (repo-portable):
+# gp-mcp-demo/bin/persona-allow -> gp-mcp-demo/data-chat/config/personas.yaml
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+PERSONAS_FILE="${PERSONAS_FILE:-$REPO_ROOT/data-chat/config/personas.yaml}"
+
+PERSONA_ID="${1:?Usage: persona-allow <persona-id> <tool-name>}"
+TOOL_NAME="${2:?Usage: persona-allow <persona-id> <tool-name>}"
+
+python3 - "$PERSONAS_FILE" "$PERSONA_ID" "$TOOL_NAME" <<'PY'
+import sys, re
+path, pid, tool = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(path) as f:
+    text = f.read()
+
+# Find the persona block starting with "- id: <pid>"
+m = re.search(rf'(- id: {re.escape(pid)}\b[\s\S]*?)(?=\n  - id: |\Z)', text)
+if not m:
+    sys.exit(f"persona-allow: persona '{pid}' not found in {path}")
+block = m.group(1)
+
+# Find allowedTools list within the block
+tools_m = re.search(r'allowedTools:\s*\n((?:\s+-\s+\S+\n)+)', block)
+if not tools_m:
+    sys.exit(f"persona-allow: allowedTools not found under persona '{pid}'")
+tools_text = tools_m.group(1)
+if re.search(rf'-\s+{re.escape(tool)}\s*$', tools_text, re.M):
+    print(f"persona-allow: '{tool}' already allowed for '{pid}' (no change)")
+    sys.exit(0)
+
+# Append the new tool with matching indentation from the first entry
+indent_m = re.match(r'(\s+)-\s+', tools_text)
+indent = indent_m.group(1) if indent_m else "      "
+new_tools_text = tools_text + f"{indent}- {tool}\n"
+new_block = block.replace(tools_text, new_tools_text, 1)
+text = text.replace(block, new_block, 1)
+
+with open(path, 'w') as f:
+    f.write(text)
+print(f"persona-allow: added '{tool}' to '{pid}'")
+PY
