@@ -40,9 +40,23 @@ cd certs && mkcert localhost 127.0.0.1 && cd ..
 
 # Build and start the full stack
 docker compose up -d --build
+
+# Create demo OAuth users + matching Greenplum roles,
+# and install the shell helpers (mcp, mcp-reload, mcp-log, gpcli, persona-allow).
+./setup-demo-users.sh
+
+# Rebuild the stateful bits that don't live in volumes:
+#   - /app/gpdb-tools.yaml (custom MCP tool definition)
+#   - MADlib extension + ml_workspace schema + analyst grants
+#   - public.web_sales_quarterly_revenue view + grants
+#   - SSH trust between the mcp container and gpadmin on greenplum
+# Every step is idempotent — safe to re-run.
+./setup-demo-state.sh
 ```
 
-First start takes several minutes (Greenplum warm-up + TPC-DS load).
+First start takes several minutes (Greenplum warm-up + TPC-DS load). On a
+full rebuild (`docker compose down && docker compose up -d --build`), re-run
+both setup scripts — `setup-demo-users.sh` first, then `setup-demo-state.sh`.
 
 ## What runs where
 
