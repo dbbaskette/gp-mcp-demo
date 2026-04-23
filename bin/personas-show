@@ -1,0 +1,31 @@
+#!/bin/sh
+# Show the personas.yaml config. With no args, dumps the whole file; with a
+# persona id, shows just that persona's block (id line through end of the
+# block — next `  - id:` or EOF).
+#
+# Useful on-camera for narration: viewers see the persona config without any
+# raw host paths being revealed.
+
+set -eu
+
+SCRIPT="$0"
+while [ -L "$SCRIPT" ]; do
+  LINK="$(readlink "$SCRIPT")"
+  case "$LINK" in
+    /*) SCRIPT="$LINK" ;;
+    *)  SCRIPT="$(dirname "$SCRIPT")/$LINK" ;;
+  esac
+done
+REPO_ROOT="$(cd "$(dirname "$SCRIPT")/.." && pwd -P)"
+PERSONAS_FILE="$REPO_ROOT/data-chat/config/personas.yaml"
+
+if [ $# -eq 0 ]; then
+  cat "$PERSONAS_FILE"
+else
+  PID="$1"
+  awk -v pid="$PID" '
+    $0 ~ "^  - id: " pid "$" { inblk=1 }
+    inblk && /^  - id: / && $0 !~ "^  - id: " pid "$" { exit }
+    inblk { print }
+  ' "$PERSONAS_FILE"
+fi
