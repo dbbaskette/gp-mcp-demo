@@ -86,8 +86,11 @@ services:
   mcp:
     # GA 1.0.0 ships linux/amd64 only. On Apple Silicon Docker Desktop runs
     # this under Rosetta transparently; the binary is statically linked so
-    # there's no libc surprise.
-    image: debian:stable-slim
+    # there's no libc surprise. The Dockerfile adds openssh-client so the
+    # server can shell out to ssh/scp for GPDB_GPHOSTSSH* diagnostics.
+    build:
+      context: ./docker/mcp
+      platforms: [linux/amd64]
     platform: linux/amd64
     depends_on:
       feauxauth:

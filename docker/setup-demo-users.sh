@@ -49,9 +49,14 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO analyst_user
 
 -- readonly: narrow slice of tpcds (viewer persona scope)
 GRANT SELECT ON customer, store_sales, item, date_dim TO readonly_user;
+
+-- MADlib for analyst ML tools (gpmlbot_*, get_table_madlib_analytics).
+-- CASCADE pulls in the required plpython3u extension.
+-- Idempotent: IF NOT EXISTS is a no-op when already installed.
+CREATE EXTENSION IF NOT EXISTS madlib CASCADE;
 SQL
 
-log "Greenplum roles ready: readonly_user, analyst_user"
+log "Greenplum roles ready: readonly_user, analyst_user; madlib extension ensured"
 
 # --- FeauxAuth ----------------------------------------------------------------
 
