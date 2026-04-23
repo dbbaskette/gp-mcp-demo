@@ -1,5 +1,50 @@
 #!/bin/sh
-# Restart the MCP server and the Data-Chat service. Use after editing
-# /app/gpdb-tools.yaml or data-chat/config/personas.yaml.
+# Restart the MCP server and the Data-Chat service, then WAIT until both are
+# actually responsive. Use after editing /app/gpdb-tools.yaml or
+# data-chat/config/personas.yaml.
+#
+# `docker restart` returns as soon as the signal is sent, not when the
+# services are ready. Spring Boot (data-chat) typically needs 2-10s to
+# finish initialization after a restart; the MCP server finishes loading
+# tools/resources in 1-3s. Without waiting, a caller that immediately
+# fires a chat prompt (or hits the MCP endpoint) will hang until both are
+# up. This script polls both and returns when they're live.
+
+set -eu
 export DOCKER_CLI_HINTS=false
-exec docker restart gp-mcp-demo-mcp-1 gp-mcp-demo-data-chat-1 >/dev/null
+
+MCP_CONTAINER="${MCP_CONTAINER:-gp-mcp-demo-mcp-1}"
+DATA_CHAT_CONTAINER="${DATA_CHAT_CONTAINER:-gp-mcp-demo-data-chat-1}"
+MAX_WAIT_SEC="${MCP_RELOAD_MAX_WAIT:-90}"
+
+# RFC3339 UTC timestamp that docker logs --since understands. Capture BEFORE
+# the restart so we only look at lines emitted AFTER this call — without
+# this, we'd match startup markers from PREVIOUS runs still in the log
+# buffer.
+SINCE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+docker restart "$MCP_CONTAINER" "$DATA_CHAT_CONTAINER" >/dev/null
+
+deadline=$(( $(date +%s) + MAX_WAIT_SEC ))
+wait_for_marker() {
+  container="$1"
+  marker="$2"
+  while :; do
+    if docker logs --since "$SINCE" "$container" 2>&1 | grep -Eq "$marker"; then
+      return 0
+    fi
+    if [ "$(date +%s)" -ge "$deadline" ]; then
+      echo "!! timed out waiting for $container ($marker not seen since $SINCE)" >&2
+      exit 1
+    fi
+    sleep 1
+  done
+}
+
+# MCP emits "Loaded N built-in GPDB resources" as the last startup line
+# before it begins serving. Any message newer than $SINCE means this
+# specific restart's init has finished.
+wait_for_marker "$MCP_CONTAINER"       "built-in GPDB resources"
+# Spring Boot prints "Started DataChatApplication in N seconds" once ready
+# to serve requests.
+wait_for_marker "$DATA_CHAT_CONTAINER" "Started [A-Za-z]+.*in [0-9.]+ seconds"
