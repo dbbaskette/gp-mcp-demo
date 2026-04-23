@@ -116,6 +116,45 @@ create_feauxauth_user "viewer@feauxauth.local"  "Demo Viewer"  "readonly"
 create_feauxauth_user "analyst@feauxauth.local" "Demo Analyst" "analyst"
 create_feauxauth_user "dba@feauxauth.local"     "Demo DBA"     "admin"
 
+# --- Shell helpers on PATH ---------------------------------------------------
+# The repo ships five demo helpers in ./bin/ (mcp, mcp-reload, mcp-log, gpcli,
+# persona-allow) that wrap the underlying `docker exec` / `docker restart` /
+# `psql` plumbing so demo recordings / live sessions read as admin commands
+# against the MCP server, not container orchestration. Install them either by
+# symlinking into /usr/local/bin (if writable) or by printing the PATH snippet
+# the operator should add to their shell rc.
+
+REPO_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+HELPERS_DIR="$REPO_DIR/bin"
+HELPER_NAMES=(mcp mcp-reload mcp-log gpcli persona-allow)
+
+log "Installing shell helpers from $HELPERS_DIR"
+if [ ! -d "$HELPERS_DIR" ]; then
+  printf '  (skip — %s not present)\n' "$HELPERS_DIR"
+else
+  chmod +x "$HELPERS_DIR"/* 2>/dev/null || true
+  if [ -w /usr/local/bin ]; then
+    for name in "${HELPER_NAMES[@]}"; do
+      src="$HELPERS_DIR/$name"
+      dst="/usr/local/bin/$name"
+      if [ -x "$src" ]; then
+        ln -sfn "$src" "$dst" && printf '  symlinked %s\n' "$dst"
+      fi
+    done
+  else
+    cat <<HINT
+  (/usr/local/bin not writable — add helpers to PATH yourself)
+  Add to your shell rc (~/.zshrc or ~/.bashrc):
+
+    export PATH="$HELPERS_DIR:\$PATH"
+
+  Or symlink with sudo:
+
+    for f in $HELPERS_DIR/*; do sudo ln -sfn "\$f" /usr/local/bin/; done
+HINT
+  fi
+fi
+
 log "Done."
 cat <<EOF
 
@@ -124,9 +163,15 @@ Demo logins (password for all: ${PASSWORD})
   analyst@feauxauth.local   role=analyst   → Greenplum analyst_user
   dba@feauxauth.local       role=admin     → Greenplum gpadmin
 
-Next: if the MCP container was already running before this script, reload it
-so it picks up any permission_levels changes:
-  docker compose restart mcp
+Helper commands now available on PATH:
+  mcp                      — interactive shell in MCP server (or 'mcp ls /app')
+  mcp-reload               — restart MCP + data-chat services
+  mcp-log [N]              — tail MCP server log (default 10 lines)
+  gpcli                    — psql as gpadmin against the Greenplum demo cluster
+  persona-allow <p> <tool> — add a tool to a persona's allowedTools
+
+Next: if the MCP container was already running before this script, reload it:
+  mcp-reload
 
 Then wire Claude Desktop:
   ./claude-mcp-config.sh on
