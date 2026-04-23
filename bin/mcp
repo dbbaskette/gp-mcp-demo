@@ -2,6 +2,11 @@
 # Drop into the MCP server shell, or run a command against it.
 #   mcp               -> interactive shell inside the MCP server
 #   mcp -c 'ls /app'  -> run one command, return output
+#
+# DOCKER_CLI_HINTS=false suppresses the Docker Desktop "What's next — Try
+# Docker Debug for..." banner that otherwise prints on exit and reveals
+# container plumbing on camera.
+export DOCKER_CLI_HINTS=false
 if [ $# -eq 0 ]; then
   exec docker exec -it gp-mcp-demo-mcp-1 env PS1='$ ' bash --norc --noprofile
 else
