@@ -48,7 +48,7 @@ docker compose up -d --build
 # Rebuild the stateful bits that don't live in volumes:
 #   - /app/gpdb-tools.yaml (custom MCP tool definition)
 #   - MADlib extension + ml_workspace schema + analyst grants
-#   - public.web_sales_quarterly_revenue view + grants
+#   - public.quarterly_web_sales_revenue view + grants
 #   - SSH trust between the mcp container and gpadmin on greenplum
 # Every step is idempotent — safe to re-run.
 ./setup-demo-state.sh

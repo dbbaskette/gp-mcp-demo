@@ -9,7 +9,7 @@
 #                               survives in the gpdata volume but first-time
 #                               setup or a `docker volume rm gpdata` wipes it.
 #   3. ml_workspace schema    — gpmlbot's write scratch space + analyst grants.
-#   4. Custom-tool view       — public.web_sales_quarterly_revenue + SELECT grant
+#   4. Custom-tool view       — public.quarterly_web_sales_revenue + SELECT grant
 #                               to readonly_user and analyst_user.
 #   5. SSH trust (MCP→Greenplum) — keypair in /root/.ssh inside MCP container,
 #                                  pubkey in gpadmin's authorized_keys on Greenplum.
@@ -92,9 +92,9 @@ SQL
 }
 
 ensure_demo_view() {
-  log "Ensuring public.web_sales_quarterly_revenue view"
+  log "Ensuring public.quarterly_web_sales_revenue view"
   gp_run <<'SQL'
-    CREATE OR REPLACE VIEW public.web_sales_quarterly_revenue AS
+    CREATE OR REPLACE VIEW public.quarterly_web_sales_revenue AS
     SELECT
       EXTRACT(YEAR FROM d.d_date)::int AS year,
       date_trunc('quarter', d.d_date) AS quarter,
@@ -103,7 +103,7 @@ ensure_demo_view() {
     FROM web_sales ws
     JOIN date_dim d ON ws.ws_sold_date_sk = d.d_date_sk
     GROUP BY 1, 2;
-    GRANT SELECT ON public.web_sales_quarterly_revenue TO readonly_user, analyst_user;
+    GRANT SELECT ON public.quarterly_web_sales_revenue TO readonly_user, analyst_user;
 SQL
   printf '  view created/refreshed and granted\n'
 }
@@ -125,7 +125,7 @@ tools:
     config:
       query: |
         SELECT quarter, revenue, transactions
-        FROM public.web_sales_quarterly_revenue
+        FROM public.quarterly_web_sales_revenue
         WHERE year BETWEEN {{start_year}} AND {{end_year}}
         ORDER BY quarter;
       output_format: "json"
@@ -191,6 +191,6 @@ Verification:
   gpcli -c "SELECT madlib.version();" | head
     -> should show MADlib 2.2.0 build string
 
-  gpcli -c "\dp public.web_sales_quarterly_revenue"
+  gpcli -c "\dp public.quarterly_web_sales_revenue"
     -> should show SELECT granted to readonly_user and analyst_user
 EOF

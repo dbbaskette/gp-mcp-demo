@@ -1,7 +1,7 @@
 #!/bin/sh
 # Reset the demo stack to the pre-Scene-12 state for re-recording:
 #   - /app/gpdb-tools.yaml removed (MCP reloads back to 37 built-in tools)
-#   - public.web_sales_quarterly_revenue view dropped
+#   - public.quarterly_web_sales_revenue view dropped
 #   - quarterly_web_sales_revenue line removed from Viewer's allowedTools
 #   - data-chat restarted so the persona change takes effect
 #
@@ -27,8 +27,8 @@ PERSONAS_FILE="$REPO_ROOT/data-chat/config/personas.yaml"
 echo "==> Removing /app/gpdb-tools.yaml"
 mcp rm -f /app/gpdb-tools.yaml || true
 
-echo "==> Dropping public.web_sales_quarterly_revenue"
-gpcli -c 'DROP VIEW IF EXISTS public.web_sales_quarterly_revenue;' | tail -n +1
+echo "==> Dropping public.quarterly_web_sales_revenue"
+gpcli -c 'DROP VIEW IF EXISTS public.quarterly_web_sales_revenue;' | tail -n +1
 
 echo "==> Removing quarterly_web_sales_revenue from Viewer's allowedTools"
 sed -i '' '/- quarterly_web_sales_revenue/d' "$PERSONAS_FILE"
