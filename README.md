@@ -58,6 +58,21 @@ First start takes several minutes (Greenplum warm-up + TPC-DS load). On a
 full rebuild (`docker compose down && docker compose up -d --build`), re-run
 both setup scripts — `setup-demo-users.sh` first, then `setup-demo-state.sh`.
 
+## Reset demo state (for re-recording / re-demo)
+
+```bash
+./reset-demo-state.sh
+```
+
+Tears down every customization the demo builds up (custom tools file,
+per-scene views, persona allowedTools drift) and restarts the services so
+the next recording or run starts from a known clean slate. Does NOT touch
+permanent infrastructure — MADlib, ml_workspace, demo users, and SSH trust
+all stay in place. After a reset, either:
+
+- Re-record a scene (each scene builds its own state on camera), or
+- Restore the fully-customized demo state with: `./setup-demo-state.sh`
+
 ## What runs where
 
 | URL | Serves |
