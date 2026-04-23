@@ -112,9 +112,14 @@ done
 
 log "Creating FeauxAuth users (password=$PASSWORD)"
 refresh_users_cache
-create_feauxauth_user "viewer@feauxauth.local"  "Demo Viewer"  "readonly"
-create_feauxauth_user "analyst@feauxauth.local" "Demo Analyst" "analyst"
-create_feauxauth_user "dba@feauxauth.local"     "Demo DBA"     "admin"
+# Canonical demo identities use @email.com — matches the GreenplumMCP
+# storyboard (Scene 3, 6, 9, 10, 11, 12, 13) and what's been in live use
+# since the initial demo setup. If an earlier pass of this script created
+# @feauxauth.local variants, delete them via the FeauxAuth admin UI or
+# API so the storyboard's `viewer@email.com` / etc. stay the only path.
+create_feauxauth_user "viewer@email.com"  "Demo Viewer"  "readonly"
+create_feauxauth_user "analyst@email.com" "Demo Analyst" "analyst"
+create_feauxauth_user "dba@email.com"     "Demo DBA"     "admin"
 
 # --- Shell helpers on PATH ---------------------------------------------------
 # The repo ships seven demo helpers in ./bin/ (mcp, mcp-reload, mcp-log, gpcli,
@@ -172,9 +177,9 @@ log "Done."
 cat <<EOF
 
 Demo logins (password for all: ${PASSWORD})
-  viewer@feauxauth.local    role=readonly  → Greenplum readonly_user
-  analyst@feauxauth.local   role=analyst   → Greenplum analyst_user
-  dba@feauxauth.local       role=admin     → Greenplum gpadmin
+  viewer@email.com    role=readonly  → Greenplum readonly_user
+  analyst@email.com   role=analyst   → Greenplum analyst_user
+  dba@email.com       role=admin     → Greenplum gpadmin
 
 Helper commands now available on PATH:
   mcp                      — interactive shell in MCP server (or 'mcp ls /app')
