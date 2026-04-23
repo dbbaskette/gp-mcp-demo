@@ -117,30 +117,43 @@ create_feauxauth_user "analyst@feauxauth.local" "Demo Analyst" "analyst"
 create_feauxauth_user "dba@feauxauth.local"     "Demo DBA"     "admin"
 
 # --- Shell helpers on PATH ---------------------------------------------------
-# The repo ships five demo helpers in ./bin/ (mcp, mcp-reload, mcp-log, gpcli,
-# persona-allow) that wrap the underlying `docker exec` / `docker restart` /
-# `psql` plumbing so demo recordings / live sessions read as admin commands
-# against the MCP server, not container orchestration. Install them either by
-# symlinking into /usr/local/bin (if writable) or by printing the PATH snippet
-# the operator should add to their shell rc.
+# The repo ships seven demo helpers in ./bin/ (mcp, mcp-reload, mcp-log, gpcli,
+# persona-allow, personas-show, demo-reset-scene12) that wrap the underlying
+# `docker exec` / `docker restart` / `psql` plumbing so demo recordings /
+# live sessions read as admin commands against the MCP server, not container
+# orchestration.
+#
+# Install target preference:
+#   1. /opt/homebrew/bin — user-writable on Apple Silicon, already on the
+#      default macOS PATH for subprocesses (including Claude Code's Bash
+#      tool, which doesn't source ~/.zshrc).
+#   2. /usr/local/bin  — legacy, often needs sudo on Apple Silicon.
+#   3. Print PATH snippet for operator's shell rc as a last resort.
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 HELPERS_DIR="$REPO_DIR/bin"
-HELPER_NAMES=(mcp mcp-reload mcp-log gpcli persona-allow)
+HELPER_NAMES=(mcp mcp-reload mcp-log gpcli persona-allow personas-show demo-reset-scene12)
+
+install_helpers_to() {
+  target="$1"
+  for name in "${HELPER_NAMES[@]}"; do
+    src="$HELPERS_DIR/$name"
+    dst="$target/$name"
+    if [ -x "$src" ]; then
+      ln -sfn "$src" "$dst" && printf '  symlinked %s\n' "$dst"
+    fi
+  done
+}
 
 log "Installing shell helpers from $HELPERS_DIR"
 if [ ! -d "$HELPERS_DIR" ]; then
   printf '  (skip — %s not present)\n' "$HELPERS_DIR"
 else
   chmod +x "$HELPERS_DIR"/* 2>/dev/null || true
-  if [ -w /usr/local/bin ]; then
-    for name in "${HELPER_NAMES[@]}"; do
-      src="$HELPERS_DIR/$name"
-      dst="/usr/local/bin/$name"
-      if [ -x "$src" ]; then
-        ln -sfn "$src" "$dst" && printf '  symlinked %s\n' "$dst"
-      fi
-    done
+  if [ -w /opt/homebrew/bin ]; then
+    install_helpers_to /opt/homebrew/bin
+  elif [ -w /usr/local/bin ]; then
+    install_helpers_to /usr/local/bin
   else
     cat <<HINT
   (/usr/local/bin not writable — add helpers to PATH yourself)
