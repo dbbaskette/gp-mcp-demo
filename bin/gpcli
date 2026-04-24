@@ -1,6 +1,50 @@
 #!/bin/sh
-# Run psql against the Greenplum demo cluster as gpadmin. Accepts the same
-# arguments psql does (-c "SQL", heredoc on stdin, etc.).
+# Run psql against the Greenplum demo cluster.
+#
+# Usage:
+#   gpcli [--as <role>] [SQL-string]          # auto-wraps in psql -c
+#   gpcli [--as <role>] -c "SQL"              # explicit psql -c
+#   gpcli [--as <role>] -f file.sql           # psql file mode
+#   gpcli [--as <role>]                       # interactive psql
+#   gpcli [--as <role>] <<'SQL' ... SQL       # heredoc (stdin)
+#
+#   --as viewer    → connect as readonly_user  (SELECT on narrow slice)
+#   --as analyst   → connect as analyst_user   (SELECT on all tpcds)
+#   --as dba       → connect as gpadmin        (full privileges, default)
+#
+# The --as flag must be the FIRST argument.
+#
+# Demo convenience: if you pass a single non-flag argument after the role,
+# gpcli treats it as SQL and auto-adds `-c` — so both of these work:
+#   gpcli --as dba "SELECT 1"         # auto-wrapped
+#   gpcli --as dba -c "SELECT 1"      # explicit
 export DOCKER_CLI_HINTS=false
-exec docker exec -i -u gpadmin -e PGPASSWORD='VMware1!' gp-mcp-demo-greenplum-1 \
-  /usr/local/greenplum-db/bin/psql -U gpadmin -h localhost -d tpcds "$@"
+
+ROLE="gpadmin"
+PGPASSWORD_VAL="VMware1!"
+
+if [ "$1" = "--as" ]; then
+  case "$2" in
+    viewer)  ROLE="readonly_user" ; PGPASSWORD_VAL="password" ;;
+    analyst) ROLE="analyst_user"  ; PGPASSWORD_VAL="password" ;;
+    dba)     ROLE="gpadmin"       ; PGPASSWORD_VAL="VMware1!" ;;
+    "")      echo "gpcli: --as requires a role (viewer|analyst|dba)" >&2 ; exit 2 ;;
+    *)       echo "gpcli: unknown role '$2' (expected viewer|analyst|dba)" >&2 ; exit 2 ;;
+  esac
+  shift 2
+fi
+
+# Demo-friendly shorthand: if exactly one positional arg remains and it
+# doesn't start with `-`, treat it as a SQL string and wrap it in `-c`.
+# This lets `gpcli --as dba "SELECT 1"` work without requiring the `-c`,
+# which reads cleaner on camera. Two+ args or anything starting with `-`
+# passes through to psql verbatim.
+if [ $# -eq 1 ]; then
+  case "$1" in
+    -*) : ;;            # already a flag, pass through
+    *)  set -- -c "$1" ;;
+  esac
+fi
+
+exec docker exec -i -u gpadmin -e PGPASSWORD="$PGPASSWORD_VAL" gp-mcp-demo-greenplum-1 \
+  /usr/local/greenplum-db/bin/psql -U "$ROLE" -h localhost -d tpcds "$@"
